@@ -114,10 +114,31 @@ function ShowcaseCard({
   return (
     <motion.div
       style={{ x, y: yy, rotate, rotateY: ry, zIndex: 10 - Math.abs(offset) }}
-      className="absolute inset-0 mx-auto grid place-items-center w-52 h-64 rounded-3xl border border-mist bg-card shadow-[0_30px_70px_-30px_rgba(11,11,12,0.5)]"
+      className="absolute inset-0 mx-auto w-52 h-64 overflow-hidden rounded-3xl border border-mist bg-card shadow-[0_30px_70px_-30px_rgba(11,11,12,0.5)]"
     >
+      {/* The section claims "on your own photo" — so the garment is worn on a
+          figure here, not floated as a flat-lay. Same silhouette treatment as
+          the About hero; swaps for a real photo when one exists. */}
+      <svg
+        viewBox="0 0 300 400"
+        className="absolute inset-0 h-full w-full text-stone"
+        aria-hidden="true"
+      >
+        <circle cx="150" cy="78" r="34" fill="currentColor" fillOpacity="0.42" />
+        <path
+          d="M138 106 Q116 112 102 126 Q78 148 72 202 L64 400 L236 400 L228 202 Q222 148 198 126 Q184 112 162 106 Z"
+          fill="currentColor"
+          fillOpacity="0.34"
+        />
+      </svg>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" loading="lazy" decoding="async" className="w-3/4 h-3/4 object-contain" />
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="absolute left-1/2 top-[24%] w-[62%] -translate-x-1/2 drop-shadow-[0_10px_20px_rgba(11,11,12,0.16)]"
+      />
     </motion.div>
   );
 }
