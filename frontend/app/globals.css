@@ -1,0 +1,133 @@
+@import "tailwindcss";
+
+/* Monochrome premium palette: black actions on gallery white,
+   two neutral grays for hierarchy, hairline mist for structure.
+   Dark mode inverts the same tokens — actions become light on near-black. */
+@theme {
+  --color-ink: #0b0b0c;
+  --color-paper: #fafaf8;
+  --color-noir: #131315;
+  --color-noir-deep: #000000;
+  --color-veil: #f1f1ee;
+  --color-ash: #7a7a7e;
+  --color-stone: #6e6e73;
+  --color-mist: #e4e4e1;
+  --color-card: #ffffff;
+
+  /* Editorial accent — marketing surfaces only. Monochrome: the accent IS ink, so
+     a `bg-accent` block is an inverted marker (ink fill + `text-paper`) that flips
+     with the theme (black-on-white in light, white-on-black in dark). Aliased to
+     ink so a future recolor is a single-line change here. */
+  --color-accent: var(--color-ink);
+  --color-accent-glow: rgba(11, 11, 12, 0.22);
+
+  --font-display: var(--font-clash), "Avenir Next", sans-serif;
+  --font-body: var(--font-switzer), "Helvetica Neue", sans-serif;
+
+  /* The single sanctioned soft-ambient tier — a diffuse ink haze, never a hard
+     drop shadow. Used only for the scrolled glass nav (earned by interaction). */
+  --shadow-ambient: 0 10px 34px -18px rgba(11, 11, 12, 0.22);
+
+  /* Semantic z-index scale — one source of truth so layers stack predictably.
+     Reference via `z-[var(--z-sticky)]` etc. Add new layers here, never inline. */
+  --z-sticky: 30;   /* the sticky top Nav */
+  --z-overlay: 40;  /* full-screen busy/loading veils over content */
+  --z-toast: 60;    /* transient toasts — must sit above the sticky nav */
+}
+
+.dark {
+  --color-ink: #f2f2f0;
+  --color-paper: #121214;
+  --color-noir: #f4f4f2;
+  --color-noir-deep: #ffffff;
+  --color-veil: #1d1d20;
+  --color-ash: #8e8e93;
+  --color-stone: #9a9aa0;
+  --color-mist: #2a2a2e;
+  --color-card: #1b1b1e;
+  /* Deeper, cooler haze so the scrolled nav still separates on near-black. */
+  --shadow-ambient: 0 12px 40px -16px rgba(0, 0, 0, 0.6);
+  /* Accent aliases ink (inverts automatically); its glow goes light in dark so a
+     card edge still reads on near-black. */
+  --color-accent-glow: rgba(255, 255, 255, 0.14);
+}
+
+/* 3D scene helpers for scroll-driven depth (marketing surfaces). */
+.scene-3d {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+/* No CSS smooth-scroll: Lenis drives smooth on marketing surfaces, the workroom
+   uses native scroll, and reduced-motion must stay instant. */
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+/* Catalog marquee: a real scroll container (drag/swipe works), auto-advanced
+   by JS. Scrollbar hidden — the motion itself communicates scrollability. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+  /* No border-radius here — it would override each element's own corners
+     (pills would snap square on focus). Modern browsers round the outline
+     to follow the focused element's border-radius automatically. */
+}
+
+/* Letterspaced caps for eyebrows / step labels */
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Dropzone drag-over border pulse */
+@keyframes dz-pulse {
+  0%, 100% { border-color: var(--color-ink); background-color: var(--color-veil); }
+  50% { border-color: var(--color-ash); background-color: var(--color-card); }
+}
+.dz-active {
+  animation: dz-pulse 0.9s ease-in-out infinite;
+}
+
+/* Scan line sweep during try-on generation */
+@keyframes scan-sweep {
+  0% { top: -14%; }
+  100% { top: 110%; }
+}
+.scan-line {
+  animation: scan-sweep 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

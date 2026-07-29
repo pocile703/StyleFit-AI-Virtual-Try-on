@@ -1,0 +1,30 @@
+# StyleFit AI — dev-parity stack. One command: `docker compose up --build`.
+# Source is bind-mounted for hot-reload; node_modules/.next are masked by
+# anonymous volumes so the host's (possibly cross-platform) copies never leak
+# into the container.
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "4000:4000" # REQUIRED: the browser hits :4000 directly (see frontend/lib/api.ts)
+    environment:
+      - PORT=4000
+      - JWT_SECRET=${JWT_SECRET:-stylefit-dev-secret-change-in-production}
+      - FASHN_API_KEY=${FASHN_API_KEY:-} # unset -> sharp mock try-on path
+    volumes:
+      - ./backend:/app # source + data/db.json + uploads persistence
+      - /app/node_modules # anon volume: keep container's linux modules
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE:-}
+      - WATCHPACK_POLLING=true # reliable hot-reload over bind mounts (Mac/Windows)
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # anon volume
+      - /app/.next # anon volume: build cache
+    depends_on:
+      - backend

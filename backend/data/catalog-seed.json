@@ -1,0 +1,104 @@
+[
+  {
+    "name": "Classic White Tee",
+    "category": "T-Shirts",
+    "color": "#F1F1EF",
+    "imageUrl": "/garments/tee-white.svg"
+  },
+  {
+    "name": "Everyday Black Tee",
+    "category": "T-Shirts",
+    "color": "#26262B",
+    "imageUrl": "/garments/tee-black.svg"
+  },
+  {
+    "name": "Graphite Crew Tee",
+    "category": "T-Shirts",
+    "color": "#46464B",
+    "imageUrl": "/garments/tee-graphite.svg"
+  },
+  {
+    "name": "Washed Denim Shirt",
+    "category": "Shirts",
+    "color": "#7FA8D9",
+    "imageUrl": "/garments/shirt-blue.svg"
+  },
+  {
+    "name": "Sage Linen Shirt",
+    "category": "Shirts",
+    "color": "#A9BCA0",
+    "imageUrl": "/garments/shirt-sage.svg"
+  },
+  {
+    "name": "Black Oversized Hoodie",
+    "category": "Hoodies",
+    "color": "#2E2B36",
+    "imageUrl": "/garments/hoodie-black.svg"
+  },
+  {
+    "name": "Ash Fleece Hoodie",
+    "category": "Hoodies",
+    "color": "#B7B7B2",
+    "imageUrl": "/garments/hoodie-ash.svg"
+  },
+  {
+    "name": "Camel Utility Jacket",
+    "category": "Jackets",
+    "color": "#C18E5A",
+    "imageUrl": "/garments/jacket-camel.svg"
+  },
+  {
+    "name": "Ink Bomber Jacket",
+    "category": "Jackets",
+    "color": "#3A3644",
+    "imageUrl": "/garments/jacket-ink.svg"
+  },
+  {
+    "name": "Straight Denim Jeans",
+    "category": "Pants",
+    "color": "#5E7CA8",
+    "imageUrl": "/garments/pants-denim.svg"
+  },
+  {
+    "name": "Stone Chinos",
+    "category": "Pants",
+    "color": "#B8B0A4",
+    "imageUrl": "/garments/pants-stone.svg"
+  },
+  {
+    "name": "Cream Knit Sweater",
+    "category": "Sweaters",
+    "color": "#E8DECB",
+    "imageUrl": "/garments/sweater-cream.svg"
+  },
+  {
+    "name": "Rust Ribbed Sweater",
+    "category": "Sweaters",
+    "color": "#B96A4B",
+    "imageUrl": "/garments/sweater-rust.svg"
+  },
+  {
+    "name": "Blush Midi Dress",
+    "category": "Dresses",
+    "color": "#EDB8C4",
+    "imageUrl": "/garments/dress-blush.svg"
+  },
+  {
+    "name": "Noir Slip Dress",
+    "category": "Dresses",
+    "color": "#312D3B",
+    "imageUrl": "/garments/dress-noir.svg"
+  },
+  {
+    "name": "Camel A-Line Skirt",
+    "category": "More",
+    "color": "#CBA06E",
+    "imageUrl": "/garments/skirt-camel.svg"
+  },
+  {
+    "name": "Noir Baseball Cap",
+    "category": "More",
+    "color": "#1E1E21",
+    "imageUrl": "/garments/cap-noir.svg"
+  }
+]

@@ -1,0 +1,25 @@
+# Root env file read by docker compose (never commit real secrets)
+.env
+
+# Cross-platform build artifacts — must never be committed (they broke a machine
+# migration once: Mac-built native binaries fail on Linux and vice versa).
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+frontend/.next/
+
+# Runtime data / uploads
+backend/data/db.json
+backend/uploads/
+
+.DS_Store
+
+# Local backups of pre-change snapshots
+backup/
+
+# TS incremental build cache
+*.tsbuildinfo
+
+# Raw source photography. The site serves the resized copies committed under
+# frontend/public/ and backend/public/ — these originals are archive only.
+Images/
