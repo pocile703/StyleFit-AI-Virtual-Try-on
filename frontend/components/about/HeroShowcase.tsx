@@ -26,6 +26,19 @@ const LOOKS: Look[] = [
 ];
 
 /**
+ * The page's only <h1>. It lives inside the hero so the first viewport states
+ * what the page is, instead of opening on a bare figure.
+ */
+function Headline() {
+  return (
+    <h1 className="mt-4 font-display font-semibold text-3xl sm:text-4xl md:text-5xl tracking-tight text-balance">
+      Fashion you can preview on{" "}
+      <span className="bg-accent text-paper px-2 leading-tight">yourself.</span>
+    </h1>
+  );
+}
+
+/**
  * One look. Today: a monochrome body silhouette with the garment laid over the
  * torso. Future: set `look.image` to a real full try-on photo and it renders that
  * single image instead — same footprint, no structural change.
@@ -33,7 +46,7 @@ const LOOKS: Look[] = [
 function LookFigure({ look }: { look: Look }) {
   if (look.image) {
     return (
-      <div className="relative w-64 sm:w-72 md:w-80 lg:w-96 aspect-[3/4] mx-auto rounded-3xl overflow-hidden border border-mist bg-veil">
+      <div className="relative w-48 sm:w-56 md:w-64 lg:w-72 aspect-[3/4] mx-auto rounded-3xl overflow-hidden border border-mist bg-veil">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={look.image}
@@ -44,7 +57,7 @@ function LookFigure({ look }: { look: Look }) {
     );
   }
   return (
-    <div className="relative w-64 sm:w-72 md:w-80 lg:w-96 aspect-[3/4] mx-auto">
+    <div className="relative w-48 sm:w-56 md:w-64 lg:w-72 aspect-[3/4] mx-auto">
       <svg
         viewBox="0 0 300 400"
         className="absolute inset-0 w-full h-full text-stone"
@@ -90,7 +103,9 @@ export default function HeroShowcase() {
   // Reduced motion: a calm, normal-height band — no pin, no scrub.
   if (reduce) {
     return (
-      <section className="mx-auto max-w-4xl px-5 pt-16 pb-4 text-center">
+      <section className="mx-auto max-w-3xl px-5 pt-16 pb-4 text-center">
+        <p className="eyebrow text-stone">About the project</p>
+        <Headline />
         <LookFigure look={LOOKS[0]} />
         <p className="mt-6 text-sm text-stone">
           See any look on a figure — the full version changes outfits as you
@@ -102,16 +117,16 @@ export default function HeroShowcase() {
 
   return (
     <section ref={ref} className="relative h-[120dvh]">
-      <div className="sticky top-0 min-h-[100dvh] overflow-hidden flex items-center justify-center">
-        {/* eyebrow — visual only; the page's real <h1> lives in the section below */}
-        <motion.p
-          className="eyebrow text-stone absolute top-[14%] left-1/2 -translate-x-1/2"
+      <div className="sticky top-0 min-h-[100dvh] overflow-hidden flex flex-col items-center justify-center gap-6 px-5 py-16">
+        <motion.div
+          className="text-center"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
-          Try it on a figure
-        </motion.p>
+          <p className="eyebrow text-stone">About the project</p>
+          <Headline />
+        </motion.div>
 
         {/* the swapping look */}
         <motion.div style={{ y: figureY }} className="w-full">
@@ -129,7 +144,7 @@ export default function HeroShowcase() {
         </motion.div>
 
         {/* garment name, synced to scroll */}
-        <div className="absolute bottom-[16%] left-1/2 -translate-x-1/2 h-8">
+        <div className="h-9">
           <AnimatePresence mode="wait">
             <motion.span
               key={LOOKS[index].label}
@@ -137,7 +152,7 @@ export default function HeroShowcase() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.3 }}
-              className="whitespace-nowrap px-4 py-2 rounded-full bg-accent text-paper text-sm font-medium"
+              className="inline-block whitespace-nowrap px-4 py-2 rounded-full bg-accent text-paper text-sm font-medium"
             >
               {LOOKS[index].label}
             </motion.span>

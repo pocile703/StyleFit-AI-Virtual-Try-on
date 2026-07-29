@@ -63,12 +63,7 @@ export default function AboutPage() {
 
       <section className="mx-auto max-w-3xl px-5 pt-16 pb-12 text-center">
         <Reveal>
-          <p className="eyebrow text-stone">About the project</p>
-          <h1 className="mt-4 font-display font-semibold text-4xl md:text-6xl tracking-tight">
-            Fashion you can preview on{" "}
-            <span className="bg-accent text-paper px-2 leading-tight">yourself.</span>
-          </h1>
-          <p className="mt-5 text-lg text-stone leading-relaxed">
+          <p className="text-lg text-stone leading-relaxed">
             StyleFit AI is an Independent Project for the Diploma in
             Information Technology at UCSI College. It explores image-based
             virtual try-on: upload a photo and a garment, and see the
