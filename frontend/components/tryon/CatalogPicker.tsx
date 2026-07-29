@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { api, imageUrl, ClothingItem } from "@/lib/api";
 import Dropzone from "./Dropzone";
+import SegmentedControl from "@/components/ui/SegmentedControl";
 
 interface CatalogPickerProps {
   selectedUrl: string | null;
@@ -38,53 +39,25 @@ export default function CatalogPicker({
 
   return (
     <div>
-      {/* tabs */}
-      <div
-        className="flex gap-1 p-1 rounded-full bg-veil w-fit mx-auto"
-        role="tablist"
-        aria-label="Garment source"
-        onKeyDown={(e) => {
-          if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-            e.preventDefault();
-            setTab((t) => (t === "catalog" ? "upload" : "catalog"));
-          }
-        }}
-      >
-        {(
-          [
-            ["catalog", "Choose from catalog"],
-            ["upload", "Upload image"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            id={`picker-tab-${key}`}
-            role="tab"
-            aria-selected={tab === key}
-            aria-controls={`picker-panel-${key}`}
-            tabIndex={tab === key ? 0 : -1}
-            onClick={() => setTab(key)}
-            className={`relative px-5 py-2 rounded-full text-sm font-medium transition-colors ${
-              tab === key ? "text-paper" : "text-stone hover:text-ink"
-            }`}
-          >
-            {tab === key && (
-              <motion.span
-                layoutId="picker-tab"
-                className="absolute inset-0 rounded-full bg-noir"
-                transition={{ type: "spring", stiffness: 400, damping: 32 }}
-              />
-            )}
-            <span className="relative">{label}</span>
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        options={[
+          { value: "catalog", label: "Choose from catalog" },
+          { value: "upload", label: "Upload image" },
+        ]}
+        value={tab}
+        onChange={setTab}
+        variant="tabs"
+        layoutId="picker-tab"
+        label="Garment source"
+        idPrefix="picker-tab"
+        className="w-fit mx-auto"
+      />
 
       <AnimatePresence mode="wait">
         {tab === "catalog" ? (
           <motion.div
             key="catalog"
-            id="picker-panel-catalog"
+            id="picker-tab-panel-catalog"
             role="tabpanel"
             aria-labelledby="picker-tab-catalog"
             initial={{ opacity: 0, y: 12 }}
@@ -99,7 +72,7 @@ export default function CatalogPicker({
                 <button
                   key={c}
                   onClick={() => setCategory(c)}
-                  className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  className={`inline-flex shrink-0 items-center min-h-11 px-4 rounded-full text-sm font-medium transition-colors ${
                     category === c
                       ? "bg-noir text-paper"
                       : "bg-veil text-stone hover:text-ink"
@@ -196,7 +169,7 @@ export default function CatalogPicker({
         ) : (
           <motion.div
             key="upload"
-            id="picker-panel-upload"
+            id="picker-tab-panel-upload"
             role="tabpanel"
             aria-labelledby="picker-tab-upload"
             initial={{ opacity: 0, y: 12 }}
