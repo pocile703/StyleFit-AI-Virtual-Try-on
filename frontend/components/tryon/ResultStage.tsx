@@ -9,6 +9,8 @@ import {
   errorKind,
   errorCode,
   runTryOn,
+  downloadImage,
+  outfitFilename,
   saveOutfit as saveOutfitRequest,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -227,14 +229,12 @@ export default function ResultStage({
 
   const download = useCallback(async () => {
     if (!resultUrl) return;
-    const res = await fetch(imageUrl(resultUrl));
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "stylefit-tryon.png";
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }, [resultUrl]);
+    try {
+      await downloadImage(resultUrl, outfitFilename(outfitName, resultUrl));
+    } catch (err) {
+      setSaveError(errorMessage(err));
+    }
+  }, [resultUrl, outfitName]);
 
   const saveOutfit = useCallback(async () => {
     if (!resultUrl) return;
@@ -412,6 +412,7 @@ export default function ResultStage({
       <RevealSlider
         beforeSrc={personPreview}
         afterSrc={imageUrl(resultUrl!)}
+        className="rounded-2xl border border-mist"
       />
 
       <div className="max-w-sm">

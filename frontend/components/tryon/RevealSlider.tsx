@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 
 /**
  * Draggable before/after comparison. Left of the handle shows the original
@@ -10,12 +10,18 @@ import { motion } from "motion/react";
 export default function RevealSlider({
   beforeSrc,
   afterSrc,
+  /** Off-centre reads as draggable; dead centre reads as a static split. */
+  initialPos = 50,
+  className = "",
 }: {
   beforeSrc: string;
   afterSrc: string;
+  initialPos?: number;
+  className?: string;
 }) {
+  const reduce = useReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState(50);
+  const [pos, setPos] = useState(initialPos);
   const dragging = useRef(false);
 
   const updateFromClientX = useCallback((clientX: number) => {
@@ -28,7 +34,9 @@ export default function RevealSlider({
   return (
     <div
       ref={containerRef}
-      className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden border border-mist bg-veil select-none touch-none cursor-ew-resize"
+      // Framing (rounding, border) is the caller's — it sits inside a card on
+      // the outfits page and stands alone in the hero.
+      className={`relative aspect-[3/4] w-full overflow-hidden bg-veil select-none touch-none cursor-ew-resize ${className}`}
       onPointerDown={(e) => {
         dragging.current = true;
         (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -93,7 +101,7 @@ export default function RevealSlider({
         style={{ left: `${pos}%` }}
       >
         <motion.span
-          initial={{ scale: 0 }}
+          initial={reduce ? false : { scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 400, damping: 22, delay: 0.15 }}
           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 grid place-items-center w-10 h-10 rounded-full bg-white shadow-lg text-black"
