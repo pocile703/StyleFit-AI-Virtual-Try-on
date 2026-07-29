@@ -1,6 +1,9 @@
 import jwt from "jsonwebtoken";
+import { config } from "../config.js";
 
-export const JWT_SECRET = process.env.JWT_SECRET || "stylefit-dev-secret-change-in-production";
+// Read through config, not process.env — env is loaded there at import time,
+// which is what makes a JWT_SECRET in backend/.env actually take effect.
+export const JWT_SECRET = config.jwtSecret;
 
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization || "";
