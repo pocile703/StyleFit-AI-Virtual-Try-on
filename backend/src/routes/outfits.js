@@ -25,6 +25,25 @@ router.post("/", (req, res) => {
   res.status(201).json({ outfit });
 });
 
+const NAME_MAX = 60;
+
+router.patch("/:id", (req, res) => {
+  const outfit = Outfits.findById(req.params.id);
+  // Same masking as delete: someone else's outfit is simply not found.
+  if (!outfit || outfit.userId !== req.userId) {
+    return res.status(404).json({ error: "Outfit not found." });
+  }
+  const { name } = req.body || {};
+  if (typeof name !== "string" || !name.trim()) {
+    return res.status(400).json({ error: "Give this look a name." });
+  }
+  const updated = Outfits.updateOne(
+    { _id: req.params.id },
+    { name: name.trim().slice(0, NAME_MAX) }
+  );
+  res.json({ outfit: updated });
+});
+
 router.delete("/:id", (req, res) => {
   const outfit = Outfits.findById(req.params.id);
   if (!outfit || outfit.userId !== req.userId) {
