@@ -5,21 +5,25 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import AppShell from "@/components/AppShell";
 import FormError from "@/components/FormError";
-import { api, imageUrl, errorMessage, Outfit } from "@/lib/api";
+import Lightbox from "@/components/ui/Lightbox";
+import OutfitCard from "@/components/outfits/OutfitCard";
+import OutfitViewer from "@/components/outfits/OutfitViewer";
+import {
+  api,
+  downloadImage,
+  errorMessage,
+  outfitFilename,
+  renameOutfit,
+  Outfit,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-MY", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function OutfitsContent() {
   const { user } = useAuth();
   const [outfits, setOutfits] = useState<Outfit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Lightbox handles returning focus to whatever opened it.
+  const [viewingId, setViewingId] = useState<string | null>(null);
   // A delete is optimistic but reversible: the row disappears immediately and
   // the API call only fires after a 5s undo window (or sooner, on unmount /
   // another delete). Undo restores the row before the call is ever made.
@@ -85,6 +89,34 @@ function OutfitsContent() {
     };
   }, [commitDelete]);
 
+  /** Rename optimistically — a failed save puts the old name back. */
+  const rename = useCallback(async (outfit: Outfit, name: string) => {
+    setError(null);
+    setOutfits((prev) =>
+      prev?.map((o) => (o._id === outfit._id ? { ...o, name } : o)) ?? null
+    );
+    try {
+      await renameOutfit(outfit._id, name);
+    } catch (err) {
+      setOutfits((prev) =>
+        prev?.map((o) => (o._id === outfit._id ? { ...o, name: outfit.name } : o)) ??
+        null
+      );
+      setError(errorMessage(err));
+    }
+  }, []);
+
+  const download = useCallback(async (outfit: Outfit) => {
+    setError(null);
+    try {
+      await downloadImage(outfit.resultUrl, outfitFilename(outfit.name, outfit.resultUrl));
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }, []);
+
+  const viewing = outfits?.find((o) => o._id === viewingId) ?? null;
+
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -137,46 +169,34 @@ function OutfitsContent() {
         <motion.div layout className="mt-8 grid grid-cols-2 lg:grid-cols-3 gap-5">
           <AnimatePresence mode="popLayout">
             {outfits.map((outfit) => (
-              <motion.article
+              <OutfitCard
                 key={outfit._id}
-                layout
-                initial={{ opacity: 0, scale: 0.94 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.3 }}
-                className="group relative rounded-2xl overflow-hidden border border-mist bg-card/70"
-              >
-                <div className="aspect-[3/4] bg-veil overflow-hidden">
-                  <img
-                    src={imageUrl(outfit.resultUrl)}
-                    alt={outfit.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
-                  />
-                </div>
-                <div className="p-3.5 flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <h2 className="text-sm font-medium truncate">{outfit.name}</h2>
-                    <p className="mt-0.5 text-xs text-stone">
-                      {formatDate(outfit.createdAt)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => remove(outfit)}
-                    aria-label={`Delete ${outfit.name}`}
-                    className="shrink-0 grid place-items-center w-11 h-11 rounded-full text-stone hover:text-ink hover:bg-veil transition-colors"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m3 0l-.8 12.1A2 2 0 0 1 15.2 21H8.8a2 2 0 0 1-2-1.9L6 7" />
-                    </svg>
-                  </button>
-                </div>
-              </motion.article>
+                outfit={outfit}
+                onExpand={() => setViewingId(outfit._id)}
+                onDownload={() => download(outfit)}
+                onRename={(name) => rename(outfit, name)}
+                onDelete={() => remove(outfit)}
+              />
             ))}
           </AnimatePresence>
         </motion.div>
       )}
+
+      <Lightbox
+        open={Boolean(viewing)}
+        onClose={() => setViewingId(null)}
+        labelledBy={viewing ? `viewer-name-${viewing._id}` : ""}
+      >
+        {viewing && (
+          <OutfitViewer
+            outfit={viewing}
+            nameId={`viewer-name-${viewing._id}`}
+            onRename={(name) => rename(viewing, name)}
+            onDownload={() => download(viewing)}
+            onClose={() => setViewingId(null)}
+          />
+        )}
+      </Lightbox>
 
       <AnimatePresence>
         {pending && (
