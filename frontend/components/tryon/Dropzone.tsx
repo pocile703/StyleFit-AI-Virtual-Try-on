@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { api, errorMessage } from "@/lib/api";
+import { errorMessage, uploadPhoto } from "@/lib/api";
 import FormError from "@/components/FormError";
 
 interface DropzoneProps {
@@ -45,10 +45,7 @@ export default function Dropzone({
       setBusy(true);
       const local = URL.createObjectURL(file);
       try {
-        const form = new FormData();
-        form.append("image", file);
-        const res = await api.post("/api/uploads/photo", form);
-        onUploaded(res.data.url, local);
+        onUploaded(await uploadPhoto(file), local);
       } catch (err) {
         setError(errorMessage(err));
       } finally {

@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { TryOnSettings } from "./tryon";
 
 // The API runs on port 4000 of the same machine serving the frontend.
 // Deriving the host from the page URL (instead of hardcoding localhost)
@@ -57,6 +58,39 @@ export function errorKind(err: unknown): ErrorKind {
   return "server";
 }
 
+/**
+ * The precise cause the API reported, when it reported one. Finer-grained than
+ * `errorKind` — it separates failures a retry can fix (timeout, rate_limit,
+ * upstream) from ones it can't (credits, moderation, input_image), which is
+ * what decides whether the UI offers "Try again" or a corrective action.
+ */
+export type ErrorCode =
+  | "input_image"
+  | "moderation"
+  | "credits"
+  | "auth"
+  | "rate_limit"
+  | "timeout"
+  | "upstream"
+  | "notfound";
+
+export function errorCode(err: unknown): ErrorCode | null {
+  if (axios.isAxiosError(err)) {
+    const code = err.response?.data?.code;
+    return typeof code === "string" ? (code as ErrorCode) : null;
+  }
+  return null;
+}
+
+/** Body type isn't here — it already lives in `preferences.bodyType`. */
+export interface BodyProfile {
+  heightCm: number | null;
+  weightKg: number | null;
+  gender: "" | "female" | "male" | "neutral";
+  age: number | null;
+  preferredFit: "" | "Relaxed" | "Regular" | "Slim";
+}
+
 export interface User {
   _id: string;
   name: string;
@@ -68,6 +102,8 @@ export interface User {
     units: string;
     theme: string;
   };
+  /** Absent on accounts created before the size estimator shipped. */
+  body?: Partial<BodyProfile>;
 }
 
 export interface ClothingItem {
@@ -85,4 +121,55 @@ export interface Outfit {
   personImageUrl: string | null;
   garmentImageUrl: string | null;
   createdAt: string;
+}
+
+export interface TryOnResult {
+  resultUrl: string;
+  /** The model that ran: "tryon-v1.6", "tryon-max", or "mock-composite". */
+  engine: string;
+  model: string;
+  credits: number;
+  settings: TryOnSettings;
+}
+
+export interface EngineInfo {
+  live: boolean;
+  credits: { standard: number; high: number };
+}
+
+export async function runTryOn(
+  input: {
+    personImageUrl: string;
+    garmentImageUrl: string;
+    settings: TryOnSettings;
+  },
+  options?: { signal?: AbortSignal }
+): Promise<TryOnResult> {
+  const res = await api.post<TryOnResult>("/api/tryon", input, {
+    signal: options?.signal,
+  });
+  return res.data;
+}
+
+/** Whether the paid engine is on, so the UI only quotes real credit costs. */
+export async function fetchEngineInfo(): Promise<EngineInfo> {
+  const res = await api.get<EngineInfo>("/api/tryon/engine");
+  return res.data;
+}
+
+export async function uploadPhoto(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("image", file);
+  const res = await api.post<{ url: string }>("/api/uploads/photo", form);
+  return res.data.url;
+}
+
+export async function saveOutfit(input: {
+  name: string;
+  resultUrl: string;
+  personImageUrl: string | null;
+  garmentImageUrl: string | null;
+}): Promise<Outfit> {
+  const res = await api.post<{ outfit: Outfit }>("/api/outfits", input);
+  return res.data.outfit;
 }
