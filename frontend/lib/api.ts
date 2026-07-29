@@ -164,6 +164,38 @@ export async function uploadPhoto(file: File): Promise<string> {
   return res.data.url;
 }
 
+export async function renameOutfit(id: string, name: string): Promise<Outfit> {
+  const res = await api.patch<{ outfit: Outfit }>(`/api/outfits/${id}`, { name });
+  return res.data.outfit;
+}
+
+/**
+ * Save an API-served image to disk. Goes through fetch + a blob URL rather than
+ * a bare download link so the API origin (port 4000) doesn't just navigate.
+ */
+export async function downloadImage(path: string, filename: string): Promise<void> {
+  const res = await fetch(imageUrl(path));
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/** Turn an outfit name into a safe, recognisable filename. */
+export function outfitFilename(name: string, path: string): string {
+  const slug =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "look";
+  const ext = path.split(".").pop()?.toLowerCase() === "jpg" ? "jpg" : "png";
+  return `stylefit-${slug}.${ext}`;
+}
+
 export async function saveOutfit(input: {
   name: string;
   resultUrl: string;
