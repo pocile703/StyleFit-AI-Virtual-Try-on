@@ -9,6 +9,41 @@ import { errorMessage } from "@/lib/api";
 import { HangerMark } from "./Logo";
 import FormError from "./FormError";
 
+/** Reveal control for a password field. Both fields share one shown state, so
+ *  either toggle flips both — each field still needs its own affordance. */
+function RevealToggle({
+  shown,
+  onToggle,
+}: {
+  shown: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={shown ? "Hide password" : "Show password"}
+      aria-pressed={shown}
+      className="absolute inset-y-0 right-1.5 my-auto grid place-items-center w-11 h-11 rounded-full text-stone hover:text-ink hover:bg-veil transition-colors"
+    >
+      <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {shown ? (
+          <>
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+            <circle cx="12" cy="12" r="3" />
+          </>
+        ) : (
+          <>
+            <path d="M3 3l18 18" />
+            <path d="M10.6 10.6a3 3 0 0 0 4.2 4.2" />
+            <path d="M9.4 5.2A9.5 9.5 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4M6.2 6.2A17 17 0 0 0 2 12s3.5 7 10 7a9.5 9.5 0 0 0 3-.5" />
+          </>
+        )}
+      </svg>
+    </button>
+  );
+}
+
 function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -108,28 +143,7 @@ function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
                 className="w-full pl-5 pr-12 py-3 rounded-full border border-mist bg-card/70 focus:border-noir transition-colors"
                 placeholder={isLogin ? "Your password" : "At least 6 characters"}
               />
-              <button
-                type="button"
-                onClick={() => setShowPw((v) => !v)}
-                aria-label={showPw ? "Hide password" : "Show password"}
-                aria-pressed={showPw}
-                className="absolute inset-y-0 right-1.5 my-auto grid place-items-center w-9 h-9 rounded-full text-stone hover:text-ink hover:bg-veil transition-colors"
-              >
-                <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  {showPw ? (
-                    <>
-                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </>
-                  ) : (
-                    <>
-                      <path d="M3 3l18 18" />
-                      <path d="M10.6 10.6a3 3 0 0 0 4.2 4.2" />
-                      <path d="M9.4 5.2A9.5 9.5 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4M6.2 6.2A17 17 0 0 0 2 12s3.5 7 10 7a9.5 9.5 0 0 0 3-.5" />
-                    </>
-                  )}
-                </svg>
-              </button>
+              <RevealToggle shown={showPw} onToggle={() => setShowPw((v) => !v)} />
             </div>
           </label>
 
@@ -138,16 +152,19 @@ function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
               <span className="block mb-1.5 text-sm font-medium">
                 Confirm password
               </span>
-              <input
-                type={showPw ? "text" : "password"}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                minLength={6}
-                autoComplete="new-password"
-                className="w-full px-5 py-3 rounded-full border border-mist bg-card/70 focus:border-noir transition-colors"
-                placeholder="Re-enter your password"
-              />
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  className="w-full pl-5 pr-12 py-3 rounded-full border border-mist bg-card/70 focus:border-noir transition-colors"
+                  placeholder="Re-enter your password"
+                />
+                <RevealToggle shown={showPw} onToggle={() => setShowPw((v) => !v)} />
+              </div>
             </label>
           )}
 
