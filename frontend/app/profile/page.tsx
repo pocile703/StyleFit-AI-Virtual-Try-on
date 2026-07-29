@@ -103,7 +103,7 @@ function ProfileContent() {
         Your account details and try-on preferences.
       </p>
 
-      <form onSubmit={save} className="mt-8 max-w-lg flex flex-col gap-8">
+      <form onSubmit={save} className="mt-8 flex flex-col gap-8">
         <section className="p-6 rounded-2xl border border-mist bg-card/60">
           <h2 className="eyebrow text-stone">Profile information</h2>
 
