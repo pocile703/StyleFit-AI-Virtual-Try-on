@@ -5,25 +5,15 @@ import {
   motion,
   AnimatePresence,
   useScroll,
-  useReducedMotion,
   useMotionValueEvent,
   useTransform,
 } from "motion/react";
 
-interface Look {
-  /** Garment flat-lay overlaid on the silhouette placeholder. */
-  garment: string;
-  label: string;
-  /** When set (future), a full look photo replaces the silhouette+garment 1:1. */
-  image?: string;
-}
+import { LOOKS as ALL_LOOKS, type Look } from "@/lib/looks";
+import { useCalmMotion } from "@/lib/useHydrated";
 
-const LOOKS: Look[] = [
-  { garment: "/demo/tee-graphite.svg", label: "Graphite Crew Tee" },
-  { garment: "/demo/jacket-camel.svg", label: "Camel Utility Jacket" },
-  { garment: "/demo/dress-noir.svg", label: "Noir Slip Dress" },
-  { garment: "/demo/hoodie-black.svg", label: "Black Oversized Hoodie" },
-];
+// Four of the six, ordered to alternate between people.
+const LOOKS: Look[] = [ALL_LOOKS[0], ALL_LOOKS[1], ALL_LOOKS[2], ALL_LOOKS[3]];
 
 /**
  * The page's only <h1>. It lives inside the hero so the first viewport states
@@ -38,50 +28,24 @@ function Headline() {
   );
 }
 
-/**
- * One look. Today: a monochrome body silhouette with the garment laid over the
- * torso. Future: set `look.image` to a real full try-on photo and it renders that
- * single image instead — same footprint, no structural change.
- */
+/** One look — a real try-on result, shown at the size the page reserves for it. */
 function LookFigure({ look }: { look: Look }) {
-  if (look.image) {
-    return (
-      <div className="relative w-48 sm:w-56 md:w-64 lg:w-72 aspect-[3/4] mx-auto rounded-3xl overflow-hidden border border-mist bg-veil">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={look.image}
-          alt={look.label}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      </div>
-    );
-  }
   return (
-    <div className="relative w-48 sm:w-56 md:w-64 lg:w-72 aspect-[3/4] mx-auto">
-      <svg
-        viewBox="0 0 300 400"
-        className="absolute inset-0 w-full h-full text-stone"
-        aria-hidden="true"
-      >
-        <circle cx="150" cy="78" r="34" fill="currentColor" style={{ fillOpacity: "var(--figure-head)" }} />
-        <path
-          d="M138 106 Q116 112 102 126 Q78 148 72 202 L64 400 L236 400 L228 202 Q222 148 198 126 Q184 112 162 106 Z"
-          fill="currentColor"
-          style={{ fillOpacity: "var(--figure-body)" }}
-        />
-      </svg>
+    <div className="relative w-48 sm:w-56 md:w-64 lg:w-72 aspect-[3/4] mx-auto rounded-3xl overflow-hidden border border-mist bg-veil">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={look.garment}
-        alt=""
-        className="absolute left-1/2 top-[24%] w-[62%] -translate-x-1/2 drop-shadow-[0_10px_20px_rgba(11,11,12,0.16)]"
+        src={look.after}
+        alt={`Try-on result: ${look.label}`}
+        className="absolute inset-0 w-full h-full object-cover"
       />
     </div>
   );
 }
 
 export default function HeroShowcase() {
-  const reduce = useReducedMotion();
+  // The pinned and calm versions are different trees, and only the browser
+  // knows which one applies — so the swap waits until after hydration.
+  const reduce = useCalmMotion();
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -103,7 +67,8 @@ export default function HeroShowcase() {
   // Reduced motion: a calm, normal-height band — no pin, no scrub.
   if (reduce) {
     return (
-      <section className="mx-auto max-w-3xl px-5 pt-16 pb-4 text-center">
+      // Keeps useScroll's target attached in this branch too.
+      <section ref={ref} className="mx-auto max-w-3xl px-5 pt-16 pb-4 text-center">
         <p className="eyebrow text-stone">About the project</p>
         <Headline />
         <LookFigure look={LOOKS[0]} />

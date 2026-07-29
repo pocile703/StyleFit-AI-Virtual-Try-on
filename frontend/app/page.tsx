@@ -4,7 +4,6 @@ import { useRef } from "react";
 import Link from "next/link";
 import {
   motion,
-  useReducedMotion,
   useScroll,
   useTransform,
   type MotionValue,
@@ -16,6 +15,8 @@ import { Stagger, StaggerItem } from "@/components/Stagger";
 import TiltCard from "@/components/TiltCard";
 import MagneticButton from "@/components/MagneticButton";
 import Footer from "@/components/Footer";
+import { LOOKS, type Look } from "@/lib/looks";
+import { useCalmMotion } from "@/lib/useHydrated";
 
 const HEADLINE: { word: string; accent?: boolean }[] = [
   { word: "See" },
@@ -75,11 +76,7 @@ const STEPS = [
   },
 ];
 
-const SHOWCASE = [
-  "/demo/jacket-camel.svg",
-  "/demo/dress-noir.svg",
-  "/demo/hoodie-black.svg",
-];
+const SHOWCASE = [LOOKS[0], LOOKS[3], LOOKS[2]];
 
 const ArrowGlyph = (
   <svg
@@ -98,12 +95,12 @@ const ArrowGlyph = (
 
 /* One 3D card in the fan — owns its own scroll-linked transforms. */
 function ShowcaseCard({
-  src,
+  look,
   offset,
   progress,
   rotate,
 }: {
-  src: string;
+  look: Look;
   offset: number;
   progress: MotionValue<number>;
   rotate: MotionValue<number>;
@@ -116,28 +113,13 @@ function ShowcaseCard({
       style={{ x, y: yy, rotate, rotateY: ry, zIndex: 10 - Math.abs(offset) }}
       className="absolute inset-0 mx-auto w-52 h-64 overflow-hidden rounded-3xl border border-mist bg-card shadow-[0_30px_70px_-30px_rgba(11,11,12,0.5)]"
     >
-      {/* The section claims "on your own photo" — so the garment is worn on a
-          figure here, not floated as a flat-lay. Same silhouette treatment as
-          the About hero; swaps for a real photo when one exists. */}
-      <svg
-        viewBox="0 0 300 400"
-        className="absolute inset-0 h-full w-full text-stone"
-        aria-hidden="true"
-      >
-        <circle cx="150" cy="78" r="34" fill="currentColor" style={{ fillOpacity: "var(--figure-head)" }} />
-        <path
-          d="M138 106 Q116 112 102 126 Q78 148 72 202 L64 400 L236 400 L228 202 Q222 148 198 126 Q184 112 162 106 Z"
-          fill="currentColor"
-          style={{ fillOpacity: "var(--figure-body)" }}
-        />
-      </svg>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={src}
+        src={look.after}
         alt=""
         loading="lazy"
         decoding="async"
-        className="absolute left-1/2 top-[24%] w-[62%] -translate-x-1/2 drop-shadow-[0_10px_20px_rgba(11,11,12,0.16)]"
+        className="absolute inset-0 h-full w-full object-cover"
       />
     </motion.div>
   );
@@ -145,7 +127,9 @@ function ShowcaseCard({
 
 /* ── Pinned 3D scroll showcase ──────────────────────────── */
 function Showcase3D() {
-  const reduce = useReducedMotion();
+  // This section swaps its whole tree on the motion preference, which the
+  // server can't know — so the swap waits until after hydration.
+  const reduce = useCalmMotion();
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -156,14 +140,30 @@ function Showcase3D() {
   const rotate = useTransform(scrollYProgress, [0, 1], [22, -8]);
 
   if (reduce) {
+    // Still show the proof — the motion is what's reduced, not the evidence.
+    // The ref stays attached here too: useScroll() above is already watching
+    // it, and an unattached target logs "ref is defined but not hydrated".
     return (
-      <section className="mx-auto max-w-6xl px-5 py-24 text-center">
+      <section ref={ref} className="mx-auto max-w-6xl px-5 py-24 text-center">
         <h2 className="font-display font-semibold text-4xl md:text-6xl tracking-tight">
           See it on <span className="bg-accent px-2 text-paper">you.</span>
         </h2>
         <p className="mt-4 text-stone max-w-md mx-auto">
           Not a model, not a size chart — the actual garment on your own photo.
         </p>
+        <div className="mt-10 grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+          {SHOWCASE.map((look) => (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              key={look.id}
+              src={look.after}
+              alt={`Try-on result: ${look.label}`}
+              loading="lazy"
+              decoding="async"
+              className="aspect-[3/4] w-full rounded-2xl border border-mist object-cover"
+            />
+          ))}
+        </div>
       </section>
     );
   }
@@ -185,10 +185,10 @@ function Showcase3D() {
         {/* 3D garment fan that spreads + rotates with scroll */}
         <div className="mt-12 sm:mt-16 scene-3d" aria-hidden="true">
           <div className="relative h-64 w-72 sm:w-[26rem]">
-            {SHOWCASE.map((src, i) => (
+            {SHOWCASE.map((look, i) => (
               <ShowcaseCard
-                key={src}
-                src={src}
+                key={look.id}
+                look={look}
                 offset={i - (SHOWCASE.length - 1) / 2}
                 progress={scrollYProgress}
                 rotate={rotate}
@@ -202,7 +202,7 @@ function Showcase3D() {
 }
 
 export default function Home() {
-  const reduce = useReducedMotion();
+  const reduce = useCalmMotion();
   const heroRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -399,8 +399,8 @@ export default function Home() {
               Your next look is one upload away.
             </h2>
             <p className="relative mt-3 text-paper/70 max-w-md mx-auto">
-              No account needed to try — sign up when you want to save your
-              favorite outfits.
+              Free to sign up. Your photo stays on your own account — never
+              shown publicly or to other users.
             </p>
             <div className="relative mt-8 flex justify-center">
               <MagneticButton
