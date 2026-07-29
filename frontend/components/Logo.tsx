@@ -25,7 +25,9 @@ export default function Logo({ compact = false }: { compact?: boolean }) {
       </span>
       {!compact && (
         <span className="font-display font-semibold text-lg tracking-tight">
-          StyleFit <span className="text-ash">AI</span>
+          {/* stone, not ash: ash is 4.09:1 on paper and fails AA for the
+              wordmark's 18px weight. stone keeps the tonal step and passes. */}
+          StyleFit <span className="text-stone">AI</span>
         </span>
       )}
     </Link>
