@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import RevealSlider from "@/components/tryon/RevealSlider";
 import { LOOKS } from "@/lib/looks";
@@ -10,29 +10,61 @@ import { useCalmMotion } from "@/lib/useHydrated";
 // people and garment types without turning the dot row into a keyboard.
 const DEMO = [LOOKS[0], LOOKS[1], LOOKS[2], LOOKS[3]];
 
+const SWEEP_MS = 2200;
+/** How long the finished result holds before the next look. */
+const HOLD_MS = 1400;
+
 /**
- * Hero demo: a real before/after the visitor can drag. The page claims "see it
- * on you", so this is an actual photo that went through the try-on and the
- * actual result — not an illustration of one.
+ * Hero demo: a real before/after. The page claims "see it on you", so this is
+ * an actual photo that went through the try-on and the actual result — not an
+ * illustration of one.
  *
- * There is no autoplay. The whole point is that the visitor moves the handle,
- * and swapping the image out from under a hand mid-drag is hostile.
+ * It plays itself: each look wipes from the original across to the result,
+ * holds, then hands over to the next. Touching it — dragging, arrow keys, or
+ * the dots — stops the loop for good. Once someone is driving, taking the
+ * wheel back is hostile.
  */
 export default function TryOnDemo() {
   const reduce = useCalmMotion();
   const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const look = DEMO[index];
+
+  const stop = useCallback(() => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+    setPlaying(false);
+  }, []);
+
+  const advance = useCallback(() => {
+    holdTimer.current = setTimeout(
+      () => setIndex((i) => (i + 1) % DEMO.length),
+      HOLD_MS
+    );
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (holdTimer.current) clearTimeout(holdTimer.current);
+    },
+    []
+  );
 
   return (
     <div className="relative w-full max-w-sm mx-auto select-none">
       <div className="relative">
-        {/* keyed on the look so switching remounts the slider at its start
-            position rather than keeping the previous drag offset */}
+        {/* keyed on the look so each one restarts its own reveal rather than
+            inheriting the previous handle position */}
         <RevealSlider
           key={look.id}
           beforeSrc={look.before}
           afterSrc={look.after}
           initialPos={58}
+          sweep={playing}
+          sweepMs={SWEEP_MS}
+          onSweepEnd={advance}
+          onInteract={stop}
           className="rounded-3xl border border-mist shadow-[0_24px_60px_-24px_rgba(11,11,12,0.3)]"
         />
 
@@ -65,14 +97,19 @@ export default function TryOnDemo() {
       </div>
 
       <p className="mt-4 text-center text-xs text-stone">
-        Drag the handle — left is the original photo, right is the try-on.
+        {playing && !reduce
+          ? "Every look here is a real result — drag the handle to take over."
+          : "Drag the handle — left is the original photo, right is the try-on."}
       </p>
 
       <div className="mt-1 flex items-center justify-center gap-1">
         {DEMO.map((l, i) => (
           <button
             key={l.id}
-            onClick={() => setIndex(i)}
+            onClick={() => {
+              stop();
+              setIndex(i);
+            }}
             aria-label={`Show ${l.label}`}
             aria-current={i === index}
             className="group/dot grid place-items-center h-11 min-w-11"

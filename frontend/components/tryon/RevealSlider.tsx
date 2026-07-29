@@ -1,11 +1,19 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
+import { useCalmMotion } from "@/lib/useHydrated";
+
+/** Beat before the wipe starts, so the original registers first. */
+const SWEEP_LEAD_IN_MS = 550;
 
 /**
  * Draggable before/after comparison. Left of the handle shows the original
  * photo, right shows the try-on result. Keyboard accessible (arrow keys).
+ *
+ * With `sweep`, it plays itself: resets to the original, wipes across to the
+ * result, then calls `onSweepEnd`. The CSS transition does the interpolation,
+ * so dragging stays a straight state update with no animation to fight.
  */
 export default function RevealSlider({
   beforeSrc,
@@ -13,16 +21,57 @@ export default function RevealSlider({
   /** Off-centre reads as draggable; dead centre reads as a static split. */
   initialPos = 50,
   className = "",
+  sweep = false,
+  sweepMs = 2200,
+  onSweepEnd,
+  onInteract,
 }: {
   beforeSrc: string;
   afterSrc: string;
   initialPos?: number;
   className?: string;
+  /** Play the reveal automatically. */
+  sweep?: boolean;
+  sweepMs?: number;
+  onSweepEnd?: () => void;
+  /** Fired the first time the visitor takes over, so autoplay can stand down. */
+  onInteract?: () => void;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useCalmMotion();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState(initialPos);
+  const [pos, setPos] = useState(sweep ? 100 : initialPos);
+  const [sweeping, setSweeping] = useState(false);
   const dragging = useRef(false);
+
+  const takeOver = useCallback(() => {
+    setSweeping(false);
+    onInteract?.();
+  }, [onInteract]);
+
+  useEffect(() => {
+    if (!sweep) return;
+    if (reduce) {
+      // No wipe, but the result still has to be visible — parking at 100 would
+      // leave these visitors looking at the original photo and nothing else.
+      setPos(initialPos);
+      return;
+    }
+    // Start from the original, hold a beat, then wipe the result across.
+    setPos(100);
+    setSweeping(false);
+    const startAt = setTimeout(() => {
+      setSweeping(true);
+      setPos(0);
+    }, SWEEP_LEAD_IN_MS);
+    const endAt = setTimeout(() => {
+      setSweeping(false);
+      onSweepEnd?.();
+    }, SWEEP_LEAD_IN_MS + sweepMs);
+    return () => {
+      clearTimeout(startAt);
+      clearTimeout(endAt);
+    };
+  }, [sweep, sweepMs, reduce, initialPos, onSweepEnd]);
 
   const updateFromClientX = useCallback((clientX: number) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -30,6 +79,8 @@ export default function RevealSlider({
     const pct = ((clientX - rect.left) / rect.width) * 100;
     setPos(Math.min(100, Math.max(0, pct)));
   }, []);
+
+  const glide = sweeping ? `${sweepMs}ms cubic-bezier(0.65, 0, 0.35, 1)` : undefined;
 
   return (
     <div
@@ -39,6 +90,7 @@ export default function RevealSlider({
       className={`relative aspect-[3/4] w-full overflow-hidden bg-veil select-none touch-none cursor-ew-resize ${className}`}
       onPointerDown={(e) => {
         dragging.current = true;
+        takeOver();
         (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
         updateFromClientX(e.clientX);
       }}
@@ -58,7 +110,10 @@ export default function RevealSlider({
       {/* after (result), clipped from the left */}
       <div
         className="absolute inset-0"
-        style={{ clipPath: `inset(0 0 0 ${pos}%)` }}
+        style={{
+          clipPath: `inset(0 0 0 ${pos}%)`,
+          transition: glide && `clip-path ${glide}`,
+        }}
       >
         <img
           src={afterSrc}
@@ -92,13 +147,15 @@ export default function RevealSlider({
         aria-valuetext={`${Math.round(pos)}% of the try-on result shown`}
         tabIndex={0}
         onKeyDown={(e) => {
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+          takeOver();
           if (e.key === "ArrowLeft") setPos((p) => Math.max(0, p - 4));
           if (e.key === "ArrowRight") setPos((p) => Math.min(100, p + 4));
           if (e.key === "Home") setPos(0);
           if (e.key === "End") setPos(100);
         }}
         className="absolute inset-y-0 -ml-px w-0.5 bg-white shadow-[0_0_12px_rgba(11,11,12,0.35)]"
-        style={{ left: `${pos}%` }}
+        style={{ left: `${pos}%`, transition: glide && `left ${glide}` }}
       >
         <motion.span
           initial={reduce ? false : { scale: 0 }}
