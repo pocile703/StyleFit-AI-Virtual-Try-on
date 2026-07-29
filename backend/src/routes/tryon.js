@@ -2,18 +2,14 @@ import { Router } from "express";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { fileURLToPath } from "node:url";
 import sharp from "sharp";
+import { config, UPLOADS_DIR, GARMENTS_DIR, RESULTS_DIR } from "../config.js";
+import { requireAuth } from "../middleware/auth.js";
+import { rateLimit } from "../middleware/rateLimit.js";
+import { normalizeSettings, modelFor, creditCost } from "../lib/tryonSettings.js";
+import { runTryOn, isConfigured, FashnError } from "../lib/fashn.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOADS_DIR = path.join(__dirname, "..", "..", "uploads");
-const GARMENTS_DIR = path.join(__dirname, "..", "..", "public", "garments");
-const RESULTS_DIR = path.join(UPLOADS_DIR, "results");
-
-const FASHN_API_BASE = "https://api.fashn.ai/v1";
-const FASHN_MODEL = "tryon-v1.6";
-const POLL_INTERVAL_MS = 2000;
-const POLL_TIMEOUT_MS = 90_000;
+const POLL_SIMULATED_MS = 2200;
 
 // Map an image URL from our own API (/uploads/... or /garments/...) back to disk.
 // basename() strips any path traversal.
@@ -28,78 +24,6 @@ function resolveLocal(url) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-// FASHN accepts image URLs or base64 data URIs. Local dev images aren't
-// publicly reachable, so everything is sent as a data URI. SVG catalog art
-// is rasterized to PNG first — the model expects photographic formats.
-async function toDataUri(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  if (ext === ".svg") {
-    const png = await sharp(filePath, { density: 300 })
-      .resize({ width: 1024, fit: "inside" })
-      .flatten({ background: "#ffffff" })
-      .png()
-      .toBuffer();
-    return `data:image/png;base64,${png.toString("base64")}`;
-  }
-  const mime =
-    ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
-  return `data:${mime};base64,${fs.readFileSync(filePath).toString("base64")}`;
-}
-
-/**
- * FASHN AI try-on engine (https://docs.fashn.ai).
- * POST /v1/run with model + garment images, then poll /v1/status/{id}
- * until completed. The CDN output expires after 72h, so the result is
- * downloaded into uploads/results/ to keep saved outfits permanent.
- */
-async function generateWithFashn(personPath, garmentPath) {
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${process.env.FASHN_API_KEY}`,
-  };
-
-  const runRes = await fetch(`${FASHN_API_BASE}/run`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model_name: FASHN_MODEL,
-      inputs: {
-        model_image: await toDataUri(personPath),
-        garment_image: await toDataUri(garmentPath),
-        category: "auto",
-      },
-    }),
-  });
-  const run = await runRes.json();
-  if (!runRes.ok || run.error) {
-    throw new Error(`FASHN run failed: ${JSON.stringify(run.error || run)}`);
-  }
-
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    await sleep(POLL_INTERVAL_MS);
-    const statusRes = await fetch(`${FASHN_API_BASE}/status/${run.id}`, { headers });
-    const status = await statusRes.json();
-    if (status.status === "completed") {
-      const outputUrl = status.output?.[0];
-      if (!outputUrl) throw new Error("FASHN completed without an output image");
-      const img = await fetch(outputUrl);
-      if (!img.ok) throw new Error(`FASHN output download failed: ${img.status}`);
-      const outName = `${crypto.randomUUID()}.png`;
-      fs.writeFileSync(
-        path.join(RESULTS_DIR, outName),
-        Buffer.from(await img.arrayBuffer())
-      );
-      return `/uploads/results/${outName}`;
-    }
-    if (status.status === "failed") {
-      throw new Error(`FASHN generation failed: ${JSON.stringify(status.error)}`);
-    }
-    // starting / in_queue / processing — keep polling
-  }
-  throw new Error("FASHN generation timed out");
-}
 
 // Offline fallback when no FASHN_API_KEY is configured: sharp composite of
 // the garment onto the torso area, with simulated latency, so the full flow
@@ -130,38 +54,116 @@ async function generateWithMock(personPath, garmentPath) {
       .png()
       .toFile(path.join(RESULTS_DIR, outName))
       .then(() => `/uploads/results/${outName}`),
-    sleep(2200),
+    sleep(POLL_SIMULATED_MS),
   ]);
   return resultUrl;
 }
 
+/** Shopper-facing copy per failure cause, with the HTTP status to send. */
+const FAILURES = {
+  input_image: [
+    422,
+    "That photo couldn't be read. A clear, front-facing full-body shot works best.",
+  ],
+  moderation: [
+    422,
+    "That image was blocked by the try-on provider's content filter. Try a different photo or garment.",
+  ],
+  credits: [503, "The AI try-on service is out of credits right now. Try again later."],
+  auth: [503, "The AI try-on service isn't configured correctly right now."],
+  rate_limit: [429, "Too many try-ons at once. Give it a minute and try again."],
+  timeout: [504, "The try-on took too long. Try again — it usually works second time."],
+  upstream: [
+    502,
+    "The AI try-on service couldn't finish this one. Try a clearer photo, or try again in a moment.",
+  ],
+};
+
 const router = Router();
 
-router.post("/", async (req, res) => {
-  const { personImageUrl, garmentImageUrl } = req.body || {};
-  const personPath = resolveLocal(personImageUrl);
-  const garmentPath = resolveLocal(garmentImageUrl);
-  if (!personPath || !garmentPath) {
-    return res.status(400).json({ error: "Both a photo and a clothing image are required." });
-  }
-  if (!fs.existsSync(personPath) || !fs.existsSync(garmentPath)) {
-    return res.status(400).json({ error: "Image not found. Upload it again." });
-  }
+router.post(
+  "/",
+  requireAuth,
+  rateLimit({
+    limit: config.tryonRateLimit,
+    windowMs: config.tryonRateWindowMs,
+    message: "You've hit the try-on limit for now. Try again a bit later.",
+  }),
+  async (req, res) => {
+    const { personImageUrl, garmentImageUrl } = req.body || {};
+    const settings = normalizeSettings(req.body?.settings);
 
-  const useFashn = Boolean(process.env.FASHN_API_KEY);
-  try {
-    const resultUrl = useFashn
-      ? await generateWithFashn(personPath, garmentPath)
-      : await generateWithMock(personPath, garmentPath);
-    res.json({ resultUrl, engine: useFashn ? FASHN_MODEL : "mock-composite" });
-  } catch (err) {
-    console.error("try-on failed:", err.message);
-    res.status(502).json({
-      error: useFashn
-        ? "The AI try-on service couldn't process this image. Try a clearer photo, or check the API key and credits."
-        : "Preview generation failed. Try a different image.",
-    });
+    const personPath = resolveLocal(personImageUrl);
+    const garmentPath = resolveLocal(garmentImageUrl);
+    if (!personPath || !garmentPath) {
+      return res
+        .status(400)
+        .json({ error: "Both a photo and a clothing image are required.", code: "notfound" });
+    }
+    if (!fs.existsSync(personPath) || !fs.existsSync(garmentPath)) {
+      return res
+        .status(400)
+        .json({ error: "Image not found. Upload it again.", code: "notfound" });
+    }
+
+    const useFashn = isConfigured();
+
+    try {
+      if (!useFashn) {
+        const resultUrl = await generateWithMock(personPath, garmentPath);
+        return res.json({
+          resultUrl,
+          engine: "mock-composite",
+          model: "mock-composite",
+          credits: 0,
+          settings,
+        });
+      }
+
+      const { resultUrl, model, credits } = await runTryOn({
+        settings,
+        personPath,
+        garmentPath,
+      });
+      return res.json({ resultUrl, engine: model, model, credits, settings });
+    } catch (err) {
+      console.error("try-on failed:", err.code || "", err.message);
+
+      if (!useFashn) {
+        return res.status(502).json({
+          error: "Preview generation failed. Try a different image.",
+          code: "upstream",
+        });
+      }
+
+      const code = err instanceof FashnError ? err.code : "upstream";
+      const [status, message] = FAILURES[code] || FAILURES.upstream;
+      return res.status(status).json({
+        error: message,
+        code,
+        // A failure before the model ran costs nothing; the client says so
+        // rather than leaving the user guessing about their credits.
+        creditsSpent: 0,
+      });
+    }
   }
+);
+
+/**
+ * Whether the live engine is on. The settings panel only shows credit costs
+ * when they're real — quoting "3 credits" against the offline mock would be a
+ * lie, and there's no way to know from the client otherwise.
+ */
+router.get("/engine", (_req, res) => {
+  res.json({
+    live: isConfigured(),
+    models: isConfigured()
+      ? { standard: modelFor({ quality: "standard" }), high: modelFor({ quality: "high" }) }
+      : null,
+    credits: isConfigured()
+      ? { standard: creditCost({ quality: "standard" }), high: creditCost({ quality: "high" }) }
+      : { standard: 0, high: 0 },
+  });
 });
 
 export default router;
