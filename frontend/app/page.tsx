@@ -173,7 +173,7 @@ function Showcase3D() {
       <div className="sticky top-0 min-h-[100dvh] flex flex-col items-center justify-center overflow-hidden scene-3d px-5">
         <motion.h2
           style={{ scale: headScale }}
-          className="relative z-10 text-center font-display font-semibold text-5xl leading-[0.95] sm:text-7xl md:text-8xl tracking-tight"
+          className="relative z-10 text-center font-display font-semibold text-5xl leading-[0.95] sm:text-6xl md:text-7xl tracking-tight"
         >
           See it on{" "}
           <span className="inline-block ml-1 bg-accent text-paper px-3">you.</span>
