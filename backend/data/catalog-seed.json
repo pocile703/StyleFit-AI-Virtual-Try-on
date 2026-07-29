@@ -1,5 +1,53 @@
 [
   {
+    "name": "Devil Hunter Tee",
+    "category": "T-Shirts",
+    "color": "#0B0B0C",
+    "imageUrl": "/garments/devil-hunter-tee.jpg"
+  },
+  {
+    "name": "Fractured Skull Tee",
+    "category": "T-Shirts",
+    "color": "#101015",
+    "imageUrl": "/garments/skull-tee.jpg"
+  },
+  {
+    "name": "Oshi No Ko Tee",
+    "category": "T-Shirts",
+    "color": "#14121A",
+    "imageUrl": "/garments/oshi-no-ko-tee.jpg"
+  },
+  {
+    "name": "Arcane Graphic Tee",
+    "category": "T-Shirts",
+    "color": "#0D0D12",
+    "imageUrl": "/garments/arcane-tee.jpg"
+  },
+  {
+    "name": "Paint Drip Tee",
+    "category": "T-Shirts",
+    "color": "#F5F5F3",
+    "imageUrl": "/garments/paint-drip-tee.jpg"
+  },
+  {
+    "name": "Essential Black Tee",
+    "category": "T-Shirts",
+    "color": "#0A0A0A",
+    "imageUrl": "/garments/black-tee.jpg"
+  },
+  {
+    "name": "Draped Asymmetric Top",
+    "category": "Shirts",
+    "color": "#0B0B0C",
+    "imageUrl": "/garments/draped-top.jpg"
+  },
+  {
+    "name": "Black Ruffle Skirt",
+    "category": "More",
+    "color": "#0B0B0C",
+    "imageUrl": "/garments/ruffle-skirt.jpg"
+  },
+  {
     "name": "Classic White Tee",
     "category": "T-Shirts",
     "color": "#F1F1EF",

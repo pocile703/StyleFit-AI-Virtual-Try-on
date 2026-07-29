@@ -10,23 +10,20 @@ import {
   useVelocity,
   useAnimationFrame,
   useMotionValue,
-  useReducedMotion,
   wrap,
 } from "motion/react";
+import { EXTRA_GARMENTS, LOOKS } from "@/lib/looks";
+import { useCalmMotion } from "@/lib/useHydrated";
 
+// The same garments the try-on catalog serves, so "Try it →" leads somewhere
+// that looks like what was clicked.
 const ITEMS = [
-  { src: "/demo/tee-white.svg", name: "Classic White Tee", category: "T-Shirts" },
-  { src: "/demo/jacket-camel.svg", name: "Camel Utility Jacket", category: "Jackets" },
-  { src: "/demo/dress-noir.svg", name: "Noir Slip Dress", category: "Dresses" },
-  { src: "/demo/shirt-blue.svg", name: "Washed Denim Shirt", category: "Shirts" },
-  { src: "/demo/sweater-cream.svg", name: "Cream Knit Sweater", category: "Sweaters" },
-  { src: "/demo/pants-denim.svg", name: "Straight Denim Jeans", category: "Pants" },
-  { src: "/demo/hoodie-black.svg", name: "Black Oversized Hoodie", category: "Hoodies" },
-  { src: "/demo/dress-blush.svg", name: "Blush Midi Dress", category: "Dresses" },
-  { src: "/demo/tee-graphite.svg", name: "Graphite Crew Tee", category: "T-Shirts" },
-  { src: "/demo/shirt-sage.svg", name: "Sage Linen Shirt", category: "Shirts" },
-  { src: "/demo/skirt-camel.svg", name: "Camel A-Line Skirt", category: "More" },
-  { src: "/demo/cap-noir.svg", name: "Noir Baseball Cap", category: "More" },
+  ...LOOKS.map((l) => ({ src: l.garment, name: l.label, category: l.category })),
+  ...EXTRA_GARMENTS.map((g) => ({
+    src: g.garment,
+    name: g.label,
+    category: g.category,
+  })),
 ];
 
 function GarmentCard({ item }: { item: (typeof ITEMS)[number] }) {
@@ -144,7 +141,7 @@ function MarqueeRow({ baseVelocity }: { baseVelocity: number }) {
  * Reduced motion → a single plain scrollable row.
  */
 export default function CatalogMarquee() {
-  const reduce = useReducedMotion();
+  const reduce = useCalmMotion();
 
   if (reduce) {
     return (
