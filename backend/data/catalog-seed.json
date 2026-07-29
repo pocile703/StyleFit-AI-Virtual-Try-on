@@ -1,5 +1,23 @@
 [
   {
+    "name": "Sage Popover Shirt",
+    "category": "Shirts",
+    "color": "#C9DCA9",
+    "imageUrl": "/garments/sage-popover-shirt.jpg"
+  },
+  {
+    "name": "B-Komachi Tee",
+    "category": "T-Shirts",
+    "color": "#FFFFFF",
+    "imageUrl": "/garments/b-komachi-tee.jpg"
+  },
+  {
+    "name": "Paper Rex Match Jersey",
+    "category": "T-Shirts",
+    "color": "#2B2E86",
+    "imageUrl": "/garments/paper-rex-jersey.jpg"
+  },
+  {
     "name": "Devil Hunter Tee",
     "category": "T-Shirts",
     "color": "#0B0B0C",

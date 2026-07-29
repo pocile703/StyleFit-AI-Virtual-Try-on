@@ -17,14 +17,27 @@ import { useCalmMotion } from "@/lib/useHydrated";
 
 // The same garments the try-on catalog serves, so "Try it →" leads somewhere
 // that looks like what was clicked.
-const ITEMS = [
-  ...LOOKS.map((l) => ({ src: l.garment, name: l.label, category: l.category })),
-  ...EXTRA_GARMENTS.map((g) => ({
-    src: g.garment,
-    name: g.label,
-    category: g.category,
-  })),
-];
+const TRIED = LOOKS.map((l) => ({ src: l.garment, name: l.label, category: l.category }));
+const OTHERS = EXTRA_GARMENTS.map((g) => ({
+  src: g.garment,
+  name: g.label,
+  category: g.category,
+}));
+
+/**
+ * Alternate the two sets rather than running one after the other. The looks
+ * with try-on results are nearly all black tees, so grouping them puts six
+ * near-identical tiles in a row.
+ */
+const ITEMS = Array.from(
+  { length: Math.max(TRIED.length, OTHERS.length) },
+  (_, i) => [TRIED[i], OTHERS[i]]
+)
+  .flat()
+  .filter(Boolean);
+
+const HALF = Math.floor(ITEMS.length / 2);
+const SECOND_ROW = [...ITEMS.slice(HALF), ...ITEMS.slice(0, HALF)];
 
 function GarmentCard({ item }: { item: (typeof ITEMS)[number] }) {
   return (
@@ -62,7 +75,13 @@ function GarmentCard({ item }: { item: (typeof ITEMS)[number] }) {
  * flips direction with scroll direction), and can be dragged to scrub. It never
  * pauses on hover. `baseVelocity` sign sets the resting direction.
  */
-function MarqueeRow({ baseVelocity }: { baseVelocity: number }) {
+function MarqueeRow({
+  baseVelocity,
+  items,
+}: {
+  baseVelocity: number;
+  items: typeof ITEMS;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const baseX = useMotionValue(0);
   const { scrollY } = useScroll();
@@ -128,7 +147,7 @@ function MarqueeRow({ baseVelocity }: { baseVelocity: number }) {
       onClickCapture={onClickCapture}
       className="flex gap-4 w-max cursor-grab active:cursor-grabbing select-none will-change-transform"
     >
-      {[...ITEMS, ...ITEMS].map((item, i) => (
+      {[...items, ...items].map((item, i) => (
         <GarmentCard key={`${item.src}-${i}`} item={item} />
       ))}
     </motion.div>
@@ -159,8 +178,9 @@ export default function CatalogMarquee() {
     <div className="relative overflow-hidden space-y-4">
       <div className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-28 z-10 bg-gradient-to-r from-paper to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-28 z-10 bg-gradient-to-l from-paper to-transparent" />
-      <MarqueeRow baseVelocity={-2.4} />
-      <MarqueeRow baseVelocity={2.4} />
+      <MarqueeRow baseVelocity={-2.4} items={ITEMS} />
+      {/* offset so the two rows never sit garment-above-garment */}
+      <MarqueeRow baseVelocity={2.4} items={SECOND_ROW} />
     </div>
   );
 }

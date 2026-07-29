@@ -75,6 +75,9 @@ export const LOOKS: Look[] = [
 
 /** Garments with no try-on result of their own — catalog tiles only. */
 export const EXTRA_GARMENTS = [
+  { label: "Sage Popover Shirt", category: "Shirts", garment: "/catalog/sage-popover-shirt.jpg" },
+  { label: "B-Komachi Tee", category: "T-Shirts", garment: "/catalog/b-komachi-tee.jpg" },
+  { label: "Paper Rex Match Jersey", category: "T-Shirts", garment: "/catalog/paper-rex-jersey.jpg" },
   { label: "Essential Black Tee", category: "T-Shirts", garment: "/catalog/black-tee.jpg" },
   { label: "Draped Asymmetric Top", category: "Shirts", garment: "/catalog/draped-top.jpg" },
 ];
