@@ -48,13 +48,13 @@ export default function TryOnDemo() {
         >
           <defs>
             <linearGradient id="tdm-body" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="currentColor" stopOpacity="0.45" />
-              <stop offset="1" stopColor="currentColor" stopOpacity="0.32" />
+              <stop offset="0" stopColor="currentColor" style={{ stopOpacity: "calc(var(--figure-body) + 0.11)" }} />
+              <stop offset="1" stopColor="currentColor" style={{ stopOpacity: "var(--figure-body)" }} />
             </linearGradient>
           </defs>
-          <ellipse cx="150" cy="470" rx="150" ry="90" fill="currentColor" fillOpacity="0.15" />
+          <ellipse cx="150" cy="470" rx="150" ry="90" fill="currentColor" style={{ fillOpacity: "var(--figure-shadow)" }} />
           {/* head + neck + shoulders as one connected form */}
-          <circle cx="150" cy="88" r="36" fill="currentColor" fillOpacity="0.5" />
+          <circle cx="150" cy="88" r="36" fill="currentColor" style={{ fillOpacity: "calc(var(--figure-head) + 0.08)" }} />
           <path
             d="M138 116 L138 138 Q118 142 102 152 Q76 168 70 206 L62 400 L238 400 L230 206 Q224 168 198 152 Q182 142 162 138 L162 116 Q156 122 150 122 Q144 122 138 116 Z"
             fill="url(#tdm-body)"

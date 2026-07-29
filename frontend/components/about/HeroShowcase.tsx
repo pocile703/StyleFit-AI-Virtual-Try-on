@@ -63,11 +63,11 @@ function LookFigure({ look }: { look: Look }) {
         className="absolute inset-0 w-full h-full text-stone"
         aria-hidden="true"
       >
-        <circle cx="150" cy="78" r="34" fill="currentColor" fillOpacity="0.42" />
+        <circle cx="150" cy="78" r="34" fill="currentColor" style={{ fillOpacity: "var(--figure-head)" }} />
         <path
           d="M138 106 Q116 112 102 126 Q78 148 72 202 L64 400 L236 400 L228 202 Q222 148 198 126 Q184 112 162 106 Z"
           fill="currentColor"
-          fillOpacity="0.34"
+          style={{ fillOpacity: "var(--figure-body)" }}
         />
       </svg>
       {/* eslint-disable-next-line @next/next/no-img-element */}
