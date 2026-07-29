@@ -1,13 +1,14 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
+import { useCalmMotion } from "@/lib/useHydrated";
 
 /**
  * App-Router route transition. `template.tsx` remounts on every navigation, so a
  * plain enter animation crossfades each new route in. Reduced motion → instant.
  */
 export default function Template({ children }: { children: React.ReactNode }) {
-  const reduce = useReducedMotion();
+  const reduce = useCalmMotion();
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 12 }}

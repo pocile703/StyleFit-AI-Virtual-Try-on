@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
+import { useCalmMotion } from "@/lib/useHydrated";
 
 /** Scroll-triggered rise + fade. Wrap any block that should reveal on scroll. */
 export default function Reveal({
@@ -18,7 +19,7 @@ export default function Reveal({
   blur?: boolean;
   className?: string;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useCalmMotion();
   return (
     <motion.div
       className={className}

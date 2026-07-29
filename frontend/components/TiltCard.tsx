@@ -6,8 +6,8 @@ import {
   useMotionValue,
   useSpring,
   useTransform,
-  useReducedMotion,
 } from "motion/react";
+import { useCalmMotion } from "@/lib/useHydrated";
 
 /**
  * Pointer-driven 3D tilt card. Follows the cursor with a subtle rotate (≤9deg) on
@@ -23,7 +23,7 @@ export default function TiltCard({
   className?: string;
   max?: number;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useCalmMotion();
   const ref = useRef<HTMLDivElement>(null);
   const px = useMotionValue(0.5);
   const py = useMotionValue(0.5);

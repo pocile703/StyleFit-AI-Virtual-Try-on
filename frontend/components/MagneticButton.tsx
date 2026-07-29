@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRef } from "react";
-import { motion, useMotionValue, useSpring, useReducedMotion } from "motion/react";
+import { motion, useMotionValue, useSpring } from "motion/react";
+import { useCalmMotion } from "@/lib/useHydrated";
 
 interface MagneticButtonProps {
   href: string;
@@ -32,7 +33,7 @@ export default function MagneticButton({
   strength = 6,
   accent = false,
 }: MagneticButtonProps) {
-  const reduce = useReducedMotion();
+  const reduce = useCalmMotion();
   const ref = useRef<HTMLAnchorElement>(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);

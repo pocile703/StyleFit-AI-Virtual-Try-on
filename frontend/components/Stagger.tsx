@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion, type Variants } from "motion/react";
+import { motion, type Variants } from "motion/react";
+import { useCalmMotion } from "@/lib/useHydrated";
 
 const containerV: Variants = {
   hidden: {},
@@ -29,7 +30,7 @@ export function Stagger({
   children: React.ReactNode;
   className?: string;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useCalmMotion();
   if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div
@@ -51,7 +52,7 @@ export function StaggerItem({
   children: React.ReactNode;
   className?: string;
 }) {
-  const reduce = useReducedMotion();
+  const reduce = useCalmMotion();
   if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div className={className} variants={itemV}>
