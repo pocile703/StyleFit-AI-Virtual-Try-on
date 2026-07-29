@@ -30,7 +30,7 @@ function ThemeToggle() {
     <button
       onClick={toggle}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-      className="grid place-items-center w-9 h-9 rounded-full text-stone hover:text-ink hover:bg-veil transition-colors"
+      className="grid place-items-center w-11 h-11 rounded-full text-stone hover:text-ink hover:bg-veil transition-colors"
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
@@ -142,7 +142,7 @@ export default function Nav() {
         <div className="md:hidden flex items-center gap-1">
         <ThemeToggle />
         <button
-          className="grid place-items-center w-10 h-10 rounded-lg hover:bg-veil"
+          className="grid place-items-center w-11 h-11 rounded-lg hover:bg-veil"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}

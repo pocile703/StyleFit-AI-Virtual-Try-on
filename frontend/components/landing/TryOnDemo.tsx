@@ -110,7 +110,7 @@ export default function TryOnDemo() {
             aria-label={`Show ${l.label}`}
             aria-current={i === index}
             onClick={() => setIndex(i)}
-            className="group/dot grid place-items-center h-6 px-2"
+            className="group/dot grid place-items-center h-11 min-w-11"
           >
             <span
               className={`h-2 rounded-full transition-[width,background-color] duration-300 ${

@@ -18,7 +18,7 @@ export default function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <Link
       href="/"
-      className="flex items-center gap-2 text-ink hover:opacity-80 transition-opacity"
+      className="flex min-h-11 items-center gap-2 text-ink hover:opacity-80 transition-opacity"
     >
       <span className="grid place-items-center w-8 h-8 rounded-lg bg-noir text-paper">
         <HangerMark className="w-5 h-5" />

@@ -336,9 +336,11 @@ export default function Home() {
             </div>
             <Link
               href="/try-on?step=clothing"
-              className="text-sm font-medium border-b-2 border-accent pb-0.5 hover:opacity-70 transition-opacity"
+              className="inline-flex items-center min-h-11 text-sm font-medium hover:opacity-70 transition-opacity"
             >
-              Browse all eight categories
+              <span className="border-b-2 border-accent pb-0.5">
+                Browse all eight categories
+              </span>
             </Link>
           </div>
         </Reveal>

@@ -12,14 +12,14 @@ export default function Footer() {
             look before you buy it.
           </p>
         </div>
-        <nav className="flex gap-6 text-sm text-stone" aria-label="Footer">
-          <Link href="/try-on" className="hover:text-ink transition-colors">
+        <nav className="flex flex-wrap gap-x-6 text-sm text-stone" aria-label="Footer">
+          <Link href="/try-on" className="inline-flex items-center min-h-11 hover:text-ink transition-colors">
             Try On
           </Link>
-          <Link href="/outfits" className="hover:text-ink transition-colors">
+          <Link href="/outfits" className="inline-flex items-center min-h-11 hover:text-ink transition-colors">
             Outfits
           </Link>
-          <Link href="/about" className="hover:text-ink transition-colors">
+          <Link href="/about" className="inline-flex items-center min-h-11 hover:text-ink transition-colors">
             About
           </Link>
         </nav>
