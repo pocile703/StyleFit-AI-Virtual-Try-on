@@ -94,7 +94,7 @@ export default function AppShell({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                className={`relative flex min-h-11 items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
                   active ? "text-noir" : "text-stone hover:text-ink hover:bg-veil/60"
                 }`}
               >

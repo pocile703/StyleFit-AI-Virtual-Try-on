@@ -172,7 +172,7 @@ function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
             <div className="-mt-1 text-right">
               <Link
                 href="/forgot-password"
-                className="text-xs font-medium text-stone hover:text-ink transition-colors"
+                className="inline-flex items-center min-h-11 text-xs font-medium text-stone hover:text-ink transition-colors"
               >
                 Forgot password?
               </Link>
@@ -195,14 +195,14 @@ function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
           {isLogin ? (
             <>
               New to StyleFit?{" "}
-              <Link href={`/signup?next=${encodeURIComponent(next)}`} className="font-medium text-noir hover:text-noir-deep">
+              <Link href={`/signup?next=${encodeURIComponent(next)}`} className="inline-flex items-center min-h-11 font-medium text-noir hover:text-noir-deep">
                 Create an account
               </Link>
             </>
           ) : (
             <>
               Already have an account?{" "}
-              <Link href={`/login?next=${encodeURIComponent(next)}`} className="font-medium text-noir hover:text-noir-deep">
+              <Link href={`/login?next=${encodeURIComponent(next)}`} className="inline-flex items-center min-h-11 font-medium text-noir hover:text-noir-deep">
                 Log in
               </Link>
             </>

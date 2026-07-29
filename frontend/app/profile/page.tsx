@@ -116,7 +116,7 @@ function ProfileContent() {
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={avatarBusy}
                 aria-label="Change profile photo"
-                className="absolute -bottom-1 -right-1 grid place-items-center w-9 h-9 rounded-full bg-noir text-paper shadow-md hover:bg-noir-deep transition-colors disabled:opacity-60"
+                className="absolute -bottom-2 -right-2 grid place-items-center w-11 h-11 rounded-full bg-noir text-paper shadow-md hover:bg-noir-deep transition-colors disabled:opacity-60"
               >
                 {avatarBusy ? (
                   <motion.span
@@ -144,7 +144,7 @@ function ProfileContent() {
                     await api.patch("/api/auth/me", { avatarUrl: null });
                     await refreshUser();
                   }}
-                  className="mt-1.5 text-xs font-medium text-stone hover:text-ink underline underline-offset-2"
+                  className="mt-1.5 inline-flex min-h-11 items-center text-xs font-medium text-stone hover:text-ink underline underline-offset-2"
                 >
                   Remove photo
                 </button>
