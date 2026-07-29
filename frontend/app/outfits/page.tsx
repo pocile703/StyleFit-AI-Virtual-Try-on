@@ -96,12 +96,16 @@ function OutfitsContent() {
             Your saved try-on looks, newest first.
           </p>
         </div>
-        <Link
-          href="/try-on"
-          className="px-5 py-2.5 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors"
-        >
-          + New try-on
-        </Link>
+        {/* The empty state carries its own, better-worded call to action, so
+            this one would just be the same link twice on an empty page. */}
+        {outfits && outfits.length > 0 && (
+          <Link
+            href="/try-on"
+            className="px-5 py-2.5 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors"
+          >
+            + New try-on
+          </Link>
+        )}
       </div>
 
       <FormError message={error} className="mt-6" />
