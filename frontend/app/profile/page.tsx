@@ -5,9 +5,19 @@ import { motion, AnimatePresence } from "motion/react";
 import AppShell from "@/components/AppShell";
 import Avatar from "@/components/Avatar";
 import FormError from "@/components/FormError";
-import { api, errorMessage } from "@/lib/api";
+import BodyFields from "@/components/profile/BodyFields";
+import SizeRecommendation from "@/components/profile/SizeRecommendation";
+import { api, errorMessage, uploadPhoto, type BodyProfile } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+
+const EMPTY_BODY: BodyProfile = {
+  heightCm: null,
+  weightKg: null,
+  gender: "",
+  age: null,
+  preferredFit: "",
+};
 
 const PREF_FIELDS = [
   {
@@ -42,6 +52,7 @@ function ProfileContent() {
     units: "Metric (cm)",
     theme: "Light",
   });
+  const [body, setBody] = useState<BodyProfile>(EMPTY_BODY);
   const [saving, setSaving] = useState(false);
   const [savedTick, setSavedTick] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -52,6 +63,8 @@ function ProfileContent() {
     if (!user) return;
     setName(user.name);
     setPrefs((p) => ({ ...p, ...user.preferences }));
+    // Accounts created before the size estimator have no body object.
+    setBody((b) => ({ ...b, ...user.body }));
   }, [user]);
 
   async function save(e: React.FormEvent) {
@@ -59,12 +72,28 @@ function ProfileContent() {
     setSaving(true);
     setError(null);
     try {
-      await api.patch("/api/auth/me", { name, preferences: prefs });
+      const res = await api.patch("/api/auth/me", {
+        name,
+        preferences: prefs,
+        body,
+      });
+      // The server keeps the previous value for a measurement it can't accept,
+      // so say which one rather than letting it silently snap back.
+      const rejected: string[] = res.data?.rejected ?? [];
+      if (rejected.length) {
+        setError(
+          `Couldn't save your ${rejected
+            .map((f) => (f === "heightCm" ? "height" : f === "weightKg" ? "weight" : "age"))
+            .join(" and ")} — check the value is realistic.`
+        );
+      }
       await refreshUser();
       // Theme preference applies immediately on save.
       setTheme(prefs.theme === "Dark" ? "dark" : "light");
-      setSavedTick(true);
-      setTimeout(() => setSavedTick(false), 2200);
+      if (!rejected.length) {
+        setSavedTick(true);
+        setTimeout(() => setSavedTick(false), 2200);
+      }
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -80,10 +109,8 @@ function ProfileContent() {
     setAvatarBusy(true);
     setError(null);
     try {
-      const form = new FormData();
-      form.append("image", file);
-      const up = await api.post("/api/uploads/photo", form);
-      await api.patch("/api/auth/me", { avatarUrl: up.data.url });
+      const url = await uploadPhoto(file);
+      await api.patch("/api/auth/me", { avatarUrl: url });
       await refreshUser();
     } catch (err) {
       setError(errorMessage(err));
@@ -119,10 +146,11 @@ function ProfileContent() {
                 className="absolute -bottom-2 -right-2 grid place-items-center w-11 h-11 rounded-full bg-noir text-paper shadow-md hover:bg-noir-deep transition-colors disabled:opacity-60"
               >
                 {avatarBusy ? (
-                  <motion.span
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 0.9, ease: "linear" }}
-                    className="w-3.5 h-3.5 rounded-full border-2 border-paper border-t-transparent"
+                  // CSS spin, not a Framer loop — the global reduced-motion
+                  // rule only reaches CSS animations.
+                  <span
+                    className="w-3.5 h-3.5 rounded-full border-2 border-paper border-t-transparent animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
                   />
                 ) : (
                   <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -185,11 +213,17 @@ function ProfileContent() {
         </section>
 
         <section className="p-6 rounded-2xl border border-mist bg-card/60">
-          <h2 className="eyebrow text-stone">Preferences</h2>
+          <h2 className="eyebrow text-stone">Fit &amp; preferences</h2>
           <p className="mt-2 text-xs text-stone">
-            These help tailor future try-on and recommendation features. Theme
-            switches the whole app between light and dark.
+            Your measurements drive the size estimate below. Theme switches the
+            whole app between light and dark.
           </p>
+
+          <BodyFields
+            value={body}
+            onChange={(patch) => setBody((b) => ({ ...b, ...patch }))}
+            units={prefs.units}
+          />
           <div className="mt-5 grid sm:grid-cols-2 gap-4">
             {PREF_FIELDS.map((field) => (
               <label key={field.key} className="block">
@@ -226,6 +260,18 @@ function ProfileContent() {
               </label>
             ))}
           </div>
+        </section>
+
+        <section className="p-6 rounded-2xl border border-mist bg-card/60">
+          <h2 className="eyebrow text-stone">Your size</h2>
+          <p className="mt-2 text-xs text-stone">
+            Worked out from your profile. Nothing is measured for you — these
+            are estimates to start from.
+          </p>
+          <SizeRecommendation
+            body={{ ...body, bodyType: prefs.bodyType }}
+            units={prefs.units}
+          />
         </section>
 
         <FormError message={error} />

@@ -117,6 +117,18 @@ body {
   text-transform: uppercase;
 }
 
+/* Measurement fields carry their unit inside the pill, where the native
+   number spinner would sit right on top of it. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 /* Dropzone drag-over border pulse */
 @keyframes dz-pulse {
   0%, 100% { border-color: var(--color-ink); background-color: var(--color-veil); }
