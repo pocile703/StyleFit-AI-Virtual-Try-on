@@ -61,6 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("stylefit_token");
     // Don't leave a remembered try-on photo behind on a shared device.
     localStorage.removeItem("stylefit_last_person");
+    // The wizard blob holds the uploaded photo path and try-on settings.
+    sessionStorage.removeItem("stylefit_wizard");
     setUser(null);
   }, []);
 

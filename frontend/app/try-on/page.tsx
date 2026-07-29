@@ -1,13 +1,21 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import StepRail from "@/components/tryon/StepRail";
 import Dropzone from "@/components/tryon/Dropzone";
 import CatalogPicker from "@/components/tryon/CatalogPicker";
 import ResultStage from "@/components/tryon/ResultStage";
-import { imageUrl } from "@/lib/api";
+import TryOnSettings from "@/components/tryon/TryOnSettings";
+import { fetchEngineInfo, imageUrl } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import {
+  DEFAULT_SETTINGS,
+  hydrateSettings,
+  type TryOnSettings as Settings,
+} from "@/lib/tryon";
 
 // Wizard state survives navigation (e.g. logging in mid-flow to save a look).
 const STORAGE_KEY = "stylefit_wizard";
@@ -25,6 +33,7 @@ const TIPS = [
 function TryOnWizard() {
   const searchParams = useSearchParams();
   const reduce = useReducedMotion();
+  const { user } = useAuth();
 
   const [step, setStep] = useState(
     searchParams.get("step") === "clothing" ? 1 : 0
@@ -33,6 +42,8 @@ function TryOnWizard() {
   const [personPreview, setPersonPreview] = useState<string | null>(null);
   const [garmentUrl, setGarmentUrl] = useState<string | null>(null);
   const [garmentLabel, setGarmentLabel] = useState("Selected garment");
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [engineLive, setEngineLive] = useState(false);
   const [runId, setRunId] = useState(0);
   const [lastPerson, setLastPerson] = useState<string | null>(null);
 
@@ -49,6 +60,7 @@ function TryOnWizard() {
         setGarmentUrl(saved.garmentUrl);
         setGarmentLabel(saved.garmentLabel || "Selected garment");
       }
+      if (saved.settings) setSettings(hydrateSettings(saved.settings));
     } catch {
       // corrupted state — start fresh
     }
@@ -57,9 +69,18 @@ function TryOnWizard() {
   useEffect(() => {
     sessionStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ personUrl, garmentUrl, garmentLabel })
+      JSON.stringify({ personUrl, garmentUrl, garmentLabel, settings })
     );
-  }, [personUrl, garmentUrl, garmentLabel]);
+  }, [personUrl, garmentUrl, garmentLabel, settings]);
+
+  // Credit costs are only shown when the paid engine is actually configured —
+  // quoting a price against the offline mock would be a lie.
+  useEffect(() => {
+    fetchEngineInfo()
+      .then((info) => setEngineLive(info.live))
+      .catch(() => setEngineLive(false));
+  }, []);
+
 
   // Remember the most recent photo across sessions (for the reuse shortcut).
   useEffect(() => {
@@ -116,16 +137,41 @@ function TryOnWizard() {
               </div>
 
               <div className="mt-8 max-w-md mx-auto">
-                <Dropzone
-                  label="Click to upload your photo"
-                  onUploaded={(url, local) => {
-                    setPersonUrl(url);
-                    setPersonPreview(local);
-                  }}
-                  previewUrl={personPreview}
-                />
+                {user ? (
+                  <Dropzone
+                    label="Click to upload your photo"
+                    onUploaded={(url, local) => {
+                      setPersonUrl(url);
+                      setPersonPreview(local);
+                    }}
+                    previewUrl={personPreview}
+                  />
+                ) : (
+                  // Photos are stored against an account, so uploading needs
+                  // one. Browsing the catalog doesn't — hence the second link.
+                  <div className="rounded-2xl border border-mist bg-card/60 px-6 py-8 text-center">
+                    <p className="font-medium">Sign in to upload your photo</p>
+                    <p className="mt-1.5 text-sm text-stone leading-relaxed">
+                      Your photo is kept on your own account, never shown
+                      publicly or to other users.
+                    </p>
+                    <Link
+                      href="/login?next=/try-on"
+                      className="mt-5 inline-flex items-center px-6 py-3 rounded-full bg-noir text-paper font-medium hover:bg-noir-deep transition-colors"
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      href="/try-on?step=clothing"
+                      onClick={() => setStep(1)}
+                      className="mt-3 flex min-h-11 items-center justify-center text-sm font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors"
+                    >
+                      Browse the catalog first
+                    </Link>
+                  </div>
+                )}
 
-                {lastPerson && !personUrl && (
+                {user && lastPerson && !personUrl && (
                   <div className="mt-3 flex items-center gap-3 rounded-2xl border border-mist px-4 py-3">
                     <button
                       type="button"
@@ -148,7 +194,7 @@ function TryOnWizard() {
                       type="button"
                       onClick={forgetLastPerson}
                       aria-label="Forget this saved photo"
-                      className="grid place-items-center w-8 h-8 shrink-0 rounded-full text-stone hover:text-ink hover:bg-veil transition-colors"
+                      className="grid place-items-center w-11 h-11 shrink-0 rounded-full text-stone hover:text-ink hover:bg-veil transition-colors"
                     >
                       <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M6 6l12 12M18 6L6 18" />
@@ -270,29 +316,54 @@ function TryOnWizard() {
                 }}
               />
 
-              <div className="mt-10 flex justify-center gap-3">
+              <div className="mx-auto max-w-xl">
+                <TryOnSettings
+                  value={settings}
+                  onChange={setSettings}
+                  engineLive={engineLive}
+                />
+              </div>
+
+              <div className="mt-8 flex justify-center gap-3">
                 <button
                   onClick={() => setStep(0)}
                   className="px-6 py-3 rounded-full border border-mist font-medium hover:border-ink transition-colors"
                 >
                   Back
                 </button>
-                <motion.button
-                  onClick={() => {
-                    if (!personUrl) {
-                      setStep(0);
-                      return;
-                    }
-                    setRunId((n) => n + 1);
-                    setStep(2);
-                  }}
-                  disabled={!garmentUrl}
-                  whileTap={garmentUrl ? { scale: 0.97 } : undefined}
-                  className="px-7 py-3 rounded-full font-medium transition-colors enabled:bg-noir enabled:text-paper enabled:hover:bg-noir-deep disabled:bg-transparent disabled:border disabled:border-mist disabled:text-stone disabled:cursor-not-allowed"
-                >
-                  {personUrl ? "Generate preview" : "Add your photo first"}
-                </motion.button>
+                {user ? (
+                  <motion.button
+                    onClick={() => {
+                      if (!personUrl) {
+                        setStep(0);
+                        return;
+                      }
+                      setRunId((n) => n + 1);
+                      setStep(2);
+                    }}
+                    disabled={!garmentUrl}
+                    whileTap={garmentUrl ? { scale: 0.97 } : undefined}
+                    className="px-7 py-3 rounded-full font-medium transition-colors enabled:bg-noir enabled:text-paper enabled:hover:bg-noir-deep disabled:bg-transparent disabled:border disabled:border-mist disabled:text-stone disabled:cursor-not-allowed"
+                  >
+                    {personUrl ? "Generate preview" : "Add your photo first"}
+                  </motion.button>
+                ) : (
+                  // Generating spends real credits, so it's account-gated. The
+                  // wizard state is in sessionStorage and survives the trip.
+                  <Link
+                    href="/login?next=/try-on"
+                    className="inline-flex items-center px-7 py-3 rounded-full bg-noir text-paper font-medium hover:bg-noir-deep transition-colors"
+                  >
+                    Sign in to generate
+                  </Link>
+                )}
               </div>
+
+              {!user && (
+                <p className="mt-3 text-center text-xs text-stone">
+                  Your photo and garment are saved here while you sign in.
+                </p>
+              )}
             </motion.section>
           )}
 
@@ -304,7 +375,9 @@ function TryOnWizard() {
                 personPreview={personPreview}
                 garmentUrl={garmentUrl}
                 garmentLabel={garmentLabel}
+                settings={settings}
                 onTryOther={() => setStep(1)}
+                onChangePhoto={() => setStep(0)}
               />
             </motion.section>
           )}

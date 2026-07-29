@@ -3,10 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import { api, imageUrl, errorMessage, errorKind } from "@/lib/api";
+import {
+  imageUrl,
+  errorMessage,
+  errorKind,
+  errorCode,
+  runTryOn,
+  saveOutfit as saveOutfitRequest,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import RevealSlider from "./RevealSlider";
 import FormError from "@/components/FormError";
+import type { TryOnSettings } from "@/lib/tryon";
 
 const PHASES = [
   "Reading your photo…",
@@ -15,32 +23,102 @@ const PHASES = [
   "Finishing the look…",
 ];
 
+interface Failure {
+  title: string;
+  detail: string;
+  /** Whether pressing the same button again could plausibly work. */
+  retryable: boolean;
+  /** A corrective action that would work when retrying wouldn't. */
+  fix: "photo" | "settings" | null;
+}
+
 /** Map a failed generation to shopper-facing recovery copy by its cause. */
-function describeFailure(err: unknown): { title: string; detail: string } {
+function describeFailure(err: unknown): Failure {
+  switch (errorCode(err)) {
+    case "input_image":
+      return {
+        title: "That photo couldn't be read",
+        detail:
+          "The AI couldn't make out a person in it. A clear, front-facing full-body shot in even light works best.",
+        retryable: false,
+        fix: "photo",
+      };
+    case "moderation":
+      return {
+        title: "That image was blocked",
+        detail:
+          "The try-on provider's content filter rejected this photo or garment. Try a different one.",
+        retryable: false,
+        fix: "photo",
+      };
+    case "credits":
+      return {
+        title: "The try-on service is out of credits",
+        detail:
+          "Nothing was charged and nothing's wrong with your photo — the account behind the AI needs topping up.",
+        retryable: false,
+        fix: null,
+      };
+    case "auth":
+      return {
+        title: "The try-on service isn't available",
+        detail:
+          "It isn't configured correctly right now. This one's on us, not on your photo.",
+        retryable: false,
+        fix: null,
+      };
+    case "rate_limit":
+      return {
+        title: "Too many try-ons at once",
+        detail: "Give it a minute, then try again — nothing was charged.",
+        retryable: true,
+        fix: null,
+      };
+    case "timeout":
+      return {
+        title: "That took too long",
+        detail:
+          "The try-on didn't finish in time. It usually works on the second attempt.",
+        retryable: true,
+        fix: null,
+      };
+    case "notfound":
+      return {
+        title: "That photo's no longer available",
+        detail:
+          "It may have expired. Head back and upload a fresh photo to carry on.",
+        retryable: false,
+        fix: "photo",
+      };
+    default:
+      break;
+  }
+
+  // No code from the API — fall back to the coarse status classification.
   switch (errorKind(err)) {
     case "network":
       return {
         title: "The connection dropped",
         detail:
           "We couldn't reach the try-on service. Check your connection and try again.",
+        retryable: true,
+        fix: null,
       };
     case "notfound":
       return {
         title: "That photo's no longer available",
         detail:
           "It may have expired. Try again, or head back and upload a fresh photo.",
-      };
-    case "engine":
-      return {
-        title: "The try-on didn't come through",
-        detail:
-          "The service couldn't finish this one. A clear, front-facing full-body photo works best — give it another try.",
+        retryable: true,
+        fix: "photo",
       };
     default:
       return {
         title: "The try-on didn't come through",
         detail:
-          "Something went wrong on our end. Give it another try in a moment.",
+          "The service couldn't finish this one. A clear, front-facing full-body photo works best — give it another try.",
+        retryable: true,
+        fix: null,
       };
   }
 }
@@ -50,7 +128,9 @@ interface ResultStageProps {
   personPreview: string;
   garmentUrl: string;
   garmentLabel: string;
+  settings: TryOnSettings;
   onTryOther: () => void;
+  onChangePhoto?: () => void;
 }
 
 export default function ResultStage({
@@ -58,14 +138,14 @@ export default function ResultStage({
   personPreview,
   garmentUrl,
   garmentLabel,
+  settings,
   onTryOther,
+  onChangePhoto,
 }: ResultStageProps) {
   const reduce = useReducedMotion();
   const { user } = useAuth();
   const [resultUrl, setResultUrl] = useState<string | null>(null);
-  const [error, setError] = useState<{ title: string; detail: string } | null>(
-    null
-  );
+  const [error, setError] = useState<Failure | null>(null);
   const [phase, setPhase] = useState(0);
   const [longWait, setLongWait] = useState(false);
   const [outfitName, setOutfitName] = useState(`${garmentLabel} look`);
@@ -73,6 +153,7 @@ export default function ResultStage({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [engine, setEngine] = useState<string | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
   const started = useRef(false);
   const controller = useRef<AbortController | null>(null);
 
@@ -82,20 +163,24 @@ export default function ResultStage({
     const ac = new AbortController();
     controller.current = ac;
     try {
-      const res = await api.post(
-        "/api/tryon",
-        { personImageUrl: personUrl, garmentImageUrl: garmentUrl },
+      const result = await runTryOn(
+        {
+          personImageUrl: personUrl,
+          garmentImageUrl: garmentUrl,
+          settings,
+        },
         { signal: ac.signal }
       );
-      setEngine(res.data.engine ?? null);
-      setResultUrl(res.data.resultUrl);
+      setEngine(result.engine ?? null);
+      setCredits(result.credits ?? null);
+      setResultUrl(result.resultUrl);
     } catch (err) {
       // A user-initiated cancel aborts the request and navigates away — don't
       // flash the failure screen on the way out.
       if (ac.signal.aborted) return;
       setError(describeFailure(err));
     }
-  }, [personUrl, garmentUrl]);
+  }, [personUrl, garmentUrl, settings]);
 
   /** Abort an in-flight generation and step back to garment selection. */
   const cancel = useCallback(() => {
@@ -110,6 +195,13 @@ export default function ResultStage({
     generate();
   }, [generate]);
 
+  /** Retry after a failure. */
+  const retry = useCallback(() => {
+    started.current = false;
+    setError(null);
+    generate();
+  }, [generate]);
+
   useEffect(() => {
     if (started.current) return;
     started.current = true;
@@ -121,18 +213,17 @@ export default function ResultStage({
       setLongWait(false);
       return;
     }
-    const id = setInterval(
-      () => setPhase((p) => (p + 1) % PHASES.length),
-      850
-    );
-    // After ~2 full phase cycles, a real FASHN call is still running and the
-    // looping copy alone reads as stuck — hold a steady reassurance line.
-    const wait = setTimeout(() => setLongWait(true), PHASES.length * 850 * 2);
+    // High quality runs roughly three times as long, so the copy has to move
+    // slower or it cycles for half a minute and reads as stuck.
+    const phaseMs = settings.quality === "high" ? 2000 : 850;
+    const id = setInterval(() => setPhase((p) => (p + 1) % PHASES.length), phaseMs);
+    // After ~2 full cycles, hold a steady reassurance line instead.
+    const wait = setTimeout(() => setLongWait(true), PHASES.length * phaseMs * 2);
     return () => {
       clearInterval(id);
       clearTimeout(wait);
     };
-  }, [resultUrl, error]);
+  }, [resultUrl, error, settings.quality]);
 
   const download = useCallback(async () => {
     if (!resultUrl) return;
@@ -150,13 +241,13 @@ export default function ResultStage({
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await api.post("/api/outfits", {
+      const outfit = await saveOutfitRequest({
         name: outfitName,
         resultUrl,
         personImageUrl: personUrl,
         garmentImageUrl: garmentUrl,
       });
-      setSavedId(res.data.outfit._id);
+      setSavedId(outfit._id);
     } catch (err) {
       // A failed save must not discard the generated result — keep the
       // preview and surface the error inline next to the Save button.
@@ -269,26 +360,42 @@ export default function ResultStage({
           {error.detail}
         </p>
         <p className="mt-3 text-xs text-stone leading-relaxed">
-          No outfit was saved, and your photo is still here — retrying won&apos;t
-          make you start over.
+          Nothing was charged, no outfit was saved, and your photo is still
+          here — you won&apos;t have to start over.
         </p>
-        <div className="mt-6 flex justify-center gap-3">
-          <button
-            onClick={() => {
-              started.current = false;
-              setError(null);
-              generate();
-            }}
-            className="px-5 py-2.5 rounded-full bg-noir text-paper font-medium hover:bg-noir-deep transition-colors"
-          >
-            Try again
-          </button>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {/* The primary action is whatever could actually work. Offering
+              "Try again" against an out-of-credits or blocked-image failure
+              just spends the user's patience on a guaranteed repeat. */}
+          {error.fix === "photo" && onChangePhoto ? (
+            <button
+              onClick={onChangePhoto}
+              className="px-5 py-2.5 rounded-full bg-noir text-paper font-medium hover:bg-noir-deep transition-colors"
+            >
+              Use a different photo
+            </button>
+          ) : error.retryable ? (
+            <button
+              onClick={retry}
+              className="px-5 py-2.5 rounded-full bg-noir text-paper font-medium hover:bg-noir-deep transition-colors"
+            >
+              Try again
+            </button>
+          ) : null}
           <button
             onClick={onTryOther}
             className="px-5 py-2.5 rounded-full border border-mist font-medium hover:border-ink transition-colors"
           >
             Pick another garment
           </button>
+          {!error.retryable && error.fix !== "photo" && (
+            <button
+              onClick={retry}
+              className="px-5 py-2.5 text-sm font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors"
+            >
+              Try again anyway
+            </button>
+          )}
         </div>
       </div>
     );
@@ -394,7 +501,8 @@ export default function ResultStage({
 
         <p className="mt-6 text-xs text-stone leading-relaxed">
           {engine?.startsWith("tryon")
-            ? `Generated by FASHN AI (${engine}).`
+            ? `Generated by FASHN AI (${engine})` +
+              (credits ? ` · ${credits} credit${credits === 1 ? "" : "s"}.` : ".")
             : "Preview only — the full AI try-on runs on the live site."}
         </p>
       </div>
