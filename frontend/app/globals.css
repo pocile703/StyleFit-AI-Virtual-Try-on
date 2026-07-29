@@ -21,12 +21,6 @@
   --color-accent: var(--color-ink);
   --color-accent-glow: rgba(11, 11, 12, 0.22);
 
-  /* Placeholder-figure silhouette opacities. Tokenised because the same values
-     read very differently once the fill colour and surface both invert. */
-  --figure-head: 0.42;
-  --figure-body: 0.34;
-  --figure-shadow: 0.15;
-
   --font-display: var(--font-clash), "Avenir Next", sans-serif;
   --font-body: var(--font-switzer), "Helvetica Neue", sans-serif;
 
@@ -56,12 +50,6 @@
   /* Accent aliases ink (inverts automatically); its glow goes light in dark so a
      card edge still reads on near-black. */
   --color-accent-glow: rgba(255, 255, 255, 0.14);
-  /* The placeholder figures tint a light stone over a near-black card here, so
-     the light-theme opacities flatten into the surface. Raised to keep the
-     silhouette readable. */
-  --figure-head: 0.72;
-  --figure-body: 0.58;
-  --figure-shadow: 0.28;
 }
 
 /* 3D scene helpers for scroll-driven depth (marketing surfaces). */
