@@ -48,7 +48,7 @@ function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
   }
 
   return (
-    <main className="flex-1 grid place-items-center px-5 py-16">
+    <main id="main-content" tabIndex={-1} className="flex-1 grid place-items-center px-5 py-16">
       <motion.div
         initial={reduce ? false : { opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}

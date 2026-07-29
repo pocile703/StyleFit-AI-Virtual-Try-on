@@ -58,7 +58,7 @@ const STACK = [
 
 export default function AboutPage() {
   return (
-    <main className="flex-1">
+    <main id="main-content" tabIndex={-1} className="flex-1">
       <HeroShowcase />
 
       <section className="mx-auto max-w-3xl px-5 pt-16 pb-12 text-center">

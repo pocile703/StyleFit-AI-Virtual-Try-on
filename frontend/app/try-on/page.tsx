@@ -99,7 +99,7 @@ function TryOnWizard() {
   };
 
   return (
-    <main className="flex-1 mx-auto w-full max-w-6xl px-5 py-10 md:py-14">
+    <main id="main-content" tabIndex={-1} className="flex-1 mx-auto w-full max-w-6xl px-5 py-10 md:py-14">
       <StepRail current={step} onStepClick={(i) => setStep(i)} />
 
       <div className="mt-10 md:mt-14 overflow-x-clip">

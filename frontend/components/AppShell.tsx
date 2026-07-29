@@ -37,7 +37,7 @@ export default function AppShell({
 
   if (!ready) {
     return (
-      <main className="flex-1 grid place-items-center py-24">
+      <main id="main-content" tabIndex={-1} className="flex-1 grid place-items-center py-24">
         <span
           role="status"
           aria-label="Loading"
@@ -49,7 +49,7 @@ export default function AppShell({
 
   if (!user) {
     return (
-      <main className="flex-1 grid place-items-center px-5 py-24 text-center">
+      <main id="main-content" tabIndex={-1} className="flex-1 grid place-items-center px-5 py-24 text-center">
         <div>
           <h1 className="font-display font-semibold text-2xl tracking-tight">
             This page is for members
@@ -123,7 +123,7 @@ export default function AppShell({
         </nav>
       </aside>
 
-      <main className="flex-1 min-w-0">{children}</main>
+      <main id="main-content" tabIndex={-1} className="flex-1 min-w-0">{children}</main>
     </div>
   );
 }

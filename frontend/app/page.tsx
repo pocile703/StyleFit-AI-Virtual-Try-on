@@ -213,7 +213,7 @@ export default function Home() {
   const demoY = useTransform(scrollYProgress, [0, 1], [0, -64]);
 
   return (
-    <main className="flex-1">
+    <main id="main-content" tabIndex={-1} className="flex-1">
       {/* ── Hero ─────────────────────────────────────────── */}
       <section
         ref={heroRef}

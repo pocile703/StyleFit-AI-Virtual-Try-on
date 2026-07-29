@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Password reset — StyleFit AI" };
 
 export default function ForgotPasswordPage() {
   return (
-    <main className="flex-1 grid place-items-center px-5 py-16">
+    <main id="main-content" tabIndex={-1} className="flex-1 grid place-items-center px-5 py-16">
       <div className="w-full max-w-sm text-center">
         <span className="inline-grid place-items-center w-12 h-12 rounded-2xl bg-noir text-paper">
           <svg
