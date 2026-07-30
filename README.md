@@ -12,12 +12,18 @@ Browser (React 19 / Next.js 16 / Tailwind v4 / Axios)
         │  REST
 Express API  (Node.js · port 4000)
   ├── JWT auth (bcrypt-hashed passwords)
-  ├── Image uploads (multer → /uploads, decoded and re-typed by sharp)
-  ├── Clothing catalog (seeded, 8 categories, 28 items)
-  ├── Try-on engine  ← FASHN AI when FASHN_API_KEY is set;
-  │                    offline mock composite (sharp) otherwise
-  └── JSON store (data/db.json) ← MongoDB/Mongoose swaps in here later
+  ├── Image uploads (multer, decoded and re-typed by sharp)
+  ├── Clothing catalog (seeded, 11 photographed garments)
+  ├── Try-on engine   ← FASHN AI when FASHN_API_KEY is set;
+  │                     offline mock composite (sharp) otherwise
+  ├── Data store      ← MongoDB when MONGODB_URI is set; data/db.json otherwise
+  └── Image storage   ← Cloudinary when CLOUDINARY_URL is set; local disk otherwise
 ```
+
+The last three lines are the same pattern: a hosted service in production, a
+zero-setup local default otherwise. Nothing above them changes between the two —
+routes never learn which is running. That is what makes `docker compose up` the
+whole setup on a fresh machine while the deployed app survives restarts.
 
 ## Run it
 
@@ -92,31 +98,45 @@ Two models sit behind the **Image quality** switch, because they expose differen
 
 Choosing an option only the High tier can express moves the request to it rather than ignoring the option, and the UI says so before spending the credits.
 
-Images are sent as base64 data URIs (catalog SVGs are rasterized to PNG first), the job is polled at `/v1/status/{id}`, and the finished image is downloaded into `uploads/results/` because FASHN's CDN links expire after three days. Without a key the same endpoint serves the offline sharp composite, so the app works in any environment.
+Images are sent as base64 data URIs, the job is polled at `/v1/status/{id}`, and the finished image is downloaded and re-stored on our own side because FASHN's CDN links expire after three days. Without a key the same endpoint serves the offline sharp composite, so the app works in any environment.
 
 The client lives in `backend/src/lib/fashn.js`; the settings contract is `backend/src/lib/tryonSettings.js`.
 
 ### Cost and abuse protection
 
-Generating costs real money, so `POST /api/tryon` and `POST /api/uploads/photo` both require a signed-in account and are rate limited per user (20 try-ons/hour by default, configurable via `TRYON_RATE_LIMIT`). The API key is read server-side only and never reaches the browser.
+Generating costs real money, so it is defended in four layers:
+
+| Layer | What it stops |
+|---|---|
+| `POST /api/tryon` and `POST /api/uploads/photo` require a signed-in account | Anyone with the URL spending credits |
+| Per-user sliding window, 20 try-ons/hour (`TRYON_RATE_LIMIT`) | One account draining the balance |
+| Whole-deployment daily cap (`TRYON_DAILY_GLOBAL_CAP`) | Every account together draining it |
+| Invite-code registration (`SIGNUP_INVITE_CODES`) | Unlimited free sign-ups in the first place |
+
+The bottom two are production-only — both are inert when their variable is unset, which is what local development wants. The API key is read server-side only and never reaches the browser.
+
+Image URLs arrive in request bodies, so they are checked against `isOwnedUrl()` in `backend/src/lib/storage.js` before anything is fetched. Without that check the try-on endpoint would fetch any address a caller named — server-side request forgery — and would spend credits on arbitrary third-party images.
 
 Failures are classified rather than lumped together — an unreadable photo, a moderation block, exhausted credits, a rate limit and a timeout each return a distinct status and message, and only the transient ones retry automatically. Retrying an out-of-credits request cannot succeed, and a retry that does succeed costs another credit.
 
-## Deploying with the live engine
+## Deployment
 
-The app runs locally as-is. Three things need doing before it could be hosted publicly with a live API key:
+The hosted build runs entirely on free tiers, none of which require a payment card.
 
-1. **Persistence.** `backend/data/db.json` is a file on disk, and most hosting platforms have an ephemeral filesystem — accounts and saved outfits would be lost on every restart. See *Swapping in MongoDB* below.
-2. **Image storage.** Uploads and results are written to `backend/uploads/` and served from local disk, with the same problem, and it does not scale beyond a single machine. Cloudinary or S3 would replace it.
-3. **Cost control.** The rate limit is per user, but sign-up is free and unlimited, so a public deployment with a live key needs a global daily cap or invite-only registration first.
+| Piece | Service | Free tier used for |
+|---|---|---|
+| Web app | Vercel | Next.js frontend, root directory `frontend` |
+| API | Render | Express service, root directory `backend`, blueprint in `render.yaml` |
+| Database | MongoDB Atlas (M0) | accounts, saved outfits, catalog |
+| Image storage | Cloudinary | uploaded photos and generated results |
 
-Also required in production: set `NEXT_PUBLIC_API_BASE` (the frontend otherwise derives the API host from the page URL on port 4000) and `CORS_ORIGINS`.
+**Environment.** On Render, set the variables `render.yaml` declares — `MONGODB_URI`, `CLOUDINARY_URL`, `FASHN_API_KEY`, `SIGNUP_INVITE_CODES`, `CORS_ORIGINS` (the Vercel origin), and let it generate `JWT_SECRET`. On Vercel, set `NEXT_PUBLIC_API_BASE` to the Render URL — it is not optional there, because the frontend otherwise assumes the API is on port 4000 of whatever host served the page.
 
-A public deployment **without** `FASHN_API_KEY` needs none of the above — the offline composite runs the entire flow at no cost.
+**Registration is invite-only** on the public deployment. Browsing, the catalog and the landing page are open to anyone; creating an account needs a code, because every account can spend credits. The sign-up form asks for one only when the API reports the gate is on, so the local build never shows the field.
 
-## Swapping in MongoDB later
+**Cold starts are real.** A free Render service suspends after about 15 minutes without traffic, and the next request pays roughly 50 seconds for it to wake. The app softens this by pinging `/api/health` the moment it mounts, so the API is already booting while the visitor reads the landing page — but a first try-on straight after a quiet night will still feel slow. This is the honest cost of not paying for hosting.
 
-`backend/src/store.js` exposes Mongoose-shaped collections (`find`, `findOne`, `create`, `updateOne`, `deleteOne`). Replace the file-backed implementation with real Mongoose models; routes stay unchanged.
+**Limits worth knowing.** Atlas M0 is 512MB; Cloudinary's free tier is 25 credits/month, so a genuinely popular deployment would exhaust its bandwidth and images would stop loading. The daily try-on cap is held in memory, so a restart resets it — the invite gate is the control that actually holds.
 
 ## Credits
 

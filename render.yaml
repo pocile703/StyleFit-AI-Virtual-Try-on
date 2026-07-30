@@ -1,0 +1,52 @@
+# Render blueprint for the StyleFit API.
+#
+# The frontend is deployed separately on Vercel (root directory `frontend`) and
+# reaches this service through NEXT_PUBLIC_API_BASE.
+#
+# Every secret is `sync: false`: Render prompts for it once in the dashboard and
+# it never appears in this file or in git history.
+services:
+  - type: web
+    name: stylefit-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+
+      # MongoDB Atlas connection string. Without it the API falls back to the
+      # local JSON file, which a free container wipes on every restart.
+      - key: MONGODB_URI
+        sync: false
+
+      # cloudinary://<key>:<secret>@<cloud-name>. Without it uploads and results
+      # are written to the container's disk and vanish with it.
+      - key: CLOUDINARY_URL
+        sync: false
+
+      # Signs session tokens. Must be a real random value in production.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Activates the real FASHN try-on engine. Unset = the offline composite.
+      - key: FASHN_API_KEY
+        sync: false
+
+      # Comma-separated invite codes. Registration is open when this is empty,
+      # which is not what a public deployment with a live engine wants.
+      - key: SIGNUP_INVITE_CODES
+        sync: false
+
+      # Whole-deployment ceiling on generations per UTC day, on top of the
+      # per-user hourly limit.
+      - key: TRYON_DAILY_GLOBAL_CAP
+        value: "40"
+
+      # The deployed frontend's origin. Comma-separated; anything not listed is
+      # refused by CORS.
+      - key: CORS_ORIGINS
+        sync: false
