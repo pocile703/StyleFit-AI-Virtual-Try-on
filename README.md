@@ -84,6 +84,24 @@ Running this way, the API key goes in `backend/.env` instead of the repo-root on
 
 **Saved outfits.** Each saved look keeps the photo that went in alongside the result, so the before/after comparison survives the save. Cards offer an inline comparison, a full-screen viewer, download, and rename. Looks saved without an original photo simply don't offer the comparison.
 
+## Tests
+
+```bash
+cd backend
+npm test                                    # against http://localhost:4000
+API=https://your-api.onrender.com npm test  # against a deployment
+INVITE=<code> npm test                      # where sign-up is invite-gated
+RUN_PAID=1 npm test                         # also run one real generation
+```
+
+49 integration tests in `backend/test/smoke.mjs`, covering registration and the invite gate, authentication and token forgery, upload validation, try-on input validation, generation, saved outfits, cross-account isolation, and profile field whitelisting.
+
+They run against a live server rather than mocks, because what is worth testing here only means anything end to end: that an upload is really decoded rather than trusted, that one account cannot touch another's outfits, that a hostile image URL is refused. There is no test framework and no image fixture on disk — node's built-in `fetch` drives the API and `sharp` draws the test image, so `npm test` works on a fresh clone with nothing extra installed.
+
+A run against a server with no configuration at all exercises everything except the invite gate; those two tests report as skipped rather than passing silently. Generation is skipped when the live engine is on, because each one costs a credit — pass `RUN_PAID=1` to include it.
+
+Test accounts use the `@stylefit.test` domain and are not removed automatically; the API has no delete-account endpoint by design.
+
 ## Enabling the real AI engine (FASHN)
 
 1. Create an API key at https://app.fashn.ai/api and buy credits under Billing → FASHN API.
