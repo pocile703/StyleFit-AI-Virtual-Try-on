@@ -72,6 +72,17 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "Something went wrong on our end." });
 });
 
+// Last resort. Every async handler is wrapped (lib/asyncRoute.js), but Node's
+// default for anything that still escapes is to exit the process — which on a
+// single-instance deployment means the whole API disappears for one bad
+// request. Log it and stay up; the request that caused it has already failed.
+process.on("unhandledRejection", (err) => {
+  console.error("unhandled rejection:", err?.stack || err);
+});
+process.on("uncaughtException", (err) => {
+  console.error("uncaught exception:", err?.stack || err);
+});
+
 // Connect and seed before accepting traffic — a request that arrives mid-connect
 // would otherwise fail on a database that is one tick away from being ready.
 async function start() {

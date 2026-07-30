@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import { requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { dailyCap } from "../middleware/dailyCap.js";
+import { route } from "../lib/asyncRoute.js";
 import { isOwnedUrl, readImage, extOf, putImage } from "../lib/storage.js";
 import { normalizeSettings, modelFor, creditCost } from "../lib/tryonSettings.js";
 import { runTryOn, isConfigured, FashnError } from "../lib/fashn.js";
@@ -86,7 +87,7 @@ router.post(
     message: "You've hit the try-on limit for now. Try again a bit later.",
   }),
   dailyCap(),
-  async (req, res) => {
+  route(async (req, res) => {
     const { personImageUrl, garmentImageUrl } = req.body || {};
     const settings = normalizeSettings(req.body?.settings);
 
@@ -142,7 +143,7 @@ router.post(
         creditsSpent: 0,
       });
     }
-  }
+  })
 );
 
 /**

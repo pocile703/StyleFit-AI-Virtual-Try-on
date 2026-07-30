@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { route } from "../lib/asyncRoute.js";
 import { Clothing } from "../store.js";
 
 const router = Router();
@@ -18,12 +19,12 @@ export const CATEGORIES = [
   "More",
 ];
 
-router.get("/", async (req, res) => {
+router.get("/", route(async (req, res) => {
   const { category } = req.query;
   const all = await Clothing.find();
   const present = new Set(all.map((item) => item.category));
   const items = category ? all.filter((item) => item.category === category) : all;
   res.json({ categories: CATEGORIES.filter((c) => present.has(c)), items });
-});
+}));
 
 export default router;

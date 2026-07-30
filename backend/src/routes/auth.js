@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { route } from "../lib/asyncRoute.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
@@ -34,7 +35,7 @@ function inviteRejection(inviteCode) {
   return null;
 }
 
-router.post("/register", async (req, res) => {
+router.post("/register", route(async (req, res) => {
   const { name, email, password, inviteCode } = req.body || {};
   const inviteError = inviteRejection(inviteCode);
   if (inviteError) return res.status(403).json({ error: inviteError, code: "invite_required" });
@@ -56,9 +57,9 @@ router.post("/register", async (req, res) => {
     body: { ...EMPTY_BODY },
   });
   res.status(201).json({ token: issueToken(user), user: publicUser(user) });
-});
+}));
 
-router.post("/login", async (req, res) => {
+router.post("/login", route(async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required." });
@@ -68,15 +69,15 @@ router.post("/login", async (req, res) => {
     return res.status(401).json({ error: "Email or password is incorrect." });
   }
   res.json({ token: issueToken(user), user: publicUser(user) });
-});
+}));
 
-router.get("/me", requireAuth, async (req, res) => {
+router.get("/me", requireAuth, route(async (req, res) => {
   const user = await Users.findById(req.userId);
   if (!user) return res.status(404).json({ error: "Account not found." });
   res.json({ user: publicUser(user) });
-});
+}));
 
-router.patch("/me", requireAuth, async (req, res) => {
+router.patch("/me", requireAuth, route(async (req, res) => {
   const user = await Users.findById(req.userId);
   if (!user) return res.status(404).json({ error: "Account not found." });
   const { name, preferences, avatarUrl, body } = req.body || {};
@@ -106,6 +107,6 @@ router.patch("/me", requireAuth, async (req, res) => {
   // Out-of-range measurements keep their previous value; name them so the UI
   // can say which field was ignored instead of silently reverting it.
   res.json({ user: publicUser(updated), rejected });
-});
+}));
 
 export default router;
