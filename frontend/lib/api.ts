@@ -137,6 +137,39 @@ export interface EngineInfo {
   credits: { standard: number; high: number };
 }
 
+export interface ServiceInfo {
+  ok: boolean;
+  tryonLive: boolean;
+  signupRequiresInvite: boolean;
+}
+
+let servicePromise: Promise<ServiceInfo> | null = null;
+
+/**
+ * What the API says about itself. Asked once per page load and shared, because
+ * two callers want it: the sign-up form (to know whether to ask for an invite
+ * code) and the app shell.
+ *
+ * It doubles as the wake-up call. The API is on a free tier that suspends after
+ * a spell of no traffic, so the first request pays for the container to boot —
+ * firing this the moment the app mounts means that happens while the visitor is
+ * still reading the landing page, not when they press a button.
+ */
+export function fetchServiceInfo(): Promise<ServiceInfo> {
+  servicePromise ??= api
+    .get<ServiceInfo>("/api/health", { timeout: 90_000 })
+    .then((res) => res.data)
+    .catch(() => {
+      // Never let a failed probe reject into a caller — a cold or unreachable
+      // API should not stop the sign-up form rendering. Assume the gate is on:
+      // showing an invite field that turns out to be unnecessary is a smaller
+      // failure than hiding one that is required.
+      servicePromise = null;
+      return { ok: false, tryonLive: false, signupRequiresInvite: true };
+    });
+  return servicePromise;
+}
+
 export async function runTryOn(
   input: {
     personImageUrl: string;

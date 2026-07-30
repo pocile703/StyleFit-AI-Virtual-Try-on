@@ -8,13 +8,18 @@ import {
   useMemo,
   useState,
 } from "react";
-import { api, User } from "./api";
+import { api, fetchServiceInfo, User } from "./api";
 
 interface AuthContextValue {
   user: User | null;
   ready: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    inviteCode?: string
+  ) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -26,6 +31,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // Wakes a suspended free-tier API early, and primes the service info the
+    // sign-up form needs. Deliberately not awaited: nothing here blocks on it.
+    void fetchServiceInfo();
+
     const token = localStorage.getItem("stylefit_token");
     if (!token) {
       setReady(true);
@@ -45,11 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (name: string, email: string, password: string) => {
+    async (name: string, email: string, password: string, inviteCode?: string) => {
       const res = await api.post("/api/auth/register", {
         name,
         email,
         password,
+        inviteCode,
       });
       localStorage.setItem("stylefit_token", res.data.token);
       setUser(res.data.user);

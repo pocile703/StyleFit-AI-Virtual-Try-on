@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { useAuth } from "@/lib/auth";
-import { errorMessage } from "@/lib/api";
+import { errorMessage, fetchServiceInfo } from "@/lib/api";
 import { HangerMark } from "./Logo";
 import FormError from "./FormError";
 
@@ -55,11 +55,25 @@ function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteRequired, setInviteRequired] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const isLogin = mode === "login";
   const next = searchParams.get("next") || "/try-on";
+
+  // Only the public deployment gates sign-up; locally the field would be noise.
+  useEffect(() => {
+    if (isLogin) return;
+    let live = true;
+    fetchServiceInfo().then((info) => {
+      if (live) setInviteRequired(info.signupRequiresInvite);
+    });
+    return () => {
+      live = false;
+    };
+  }, [isLogin]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -73,7 +87,7 @@ function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
       if (isLogin) {
         await login(email, password);
       } else {
-        await register(name, email, password);
+        await register(name, email, password, inviteCode);
       }
       router.push(next);
     } catch (err) {
@@ -165,6 +179,24 @@ function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
                 />
                 <RevealToggle shown={showPw} onToggle={() => setShowPw((v) => !v)} />
               </div>
+            </label>
+          )}
+
+          {!isLogin && inviteRequired && (
+            <label className="block">
+              <span className="block mb-1.5 text-sm font-medium">Invite code</span>
+              <input
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                required
+                autoComplete="off"
+                className="w-full px-5 py-3 rounded-full border border-mist bg-card/70 focus:border-noir transition-colors"
+                placeholder="The code you were given"
+              />
+              <span className="mt-1.5 block text-xs text-stone">
+                Every try-on runs on a paid AI service, so accounts are handed out by
+                code while this is a student project.
+              </span>
             </label>
           )}
 
