@@ -1,62 +1,58 @@
 import { Router } from "express";
-import fs from "node:fs";
-import path from "node:path";
-import crypto from "node:crypto";
 import sharp from "sharp";
-import { config, UPLOADS_DIR, GARMENTS_DIR, RESULTS_DIR } from "../config.js";
+import { config } from "../config.js";
 import { requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
+import { dailyCap } from "../middleware/dailyCap.js";
+import { isOwnedUrl, readImage, extOf, putImage } from "../lib/storage.js";
 import { normalizeSettings, modelFor, creditCost } from "../lib/tryonSettings.js";
 import { runTryOn, isConfigured, FashnError } from "../lib/fashn.js";
 
 const POLL_SIMULATED_MS = 2200;
 
-// Map an image URL from our own API (/uploads/... or /garments/...) back to disk.
-// basename() strips any path traversal.
-function resolveLocal(url) {
-  if (typeof url !== "string") return null;
-  const clean = url.split("?")[0];
-  const name = path.basename(clean);
-  if (clean.startsWith("/uploads/results/")) return path.join(RESULTS_DIR, name);
-  if (clean.startsWith("/uploads/")) return path.join(UPLOADS_DIR, name);
-  if (clean.startsWith("/garments/")) return path.join(GARMENTS_DIR, name);
-  return null;
-}
-
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Fetch an image named in the request body. `isOwnedUrl` is the gate: image
+ * URLs arrive from the client, so without it this endpoint would fetch
+ * whatever address a caller supplied.
+ */
+async function loadImage(url) {
+  if (!isOwnedUrl(url)) return null;
+  try {
+    return { buffer: await readImage(url), ext: extOf(url) };
+  } catch {
+    return null;
+  }
+}
 
 // Offline fallback when no FASHN_API_KEY is configured: sharp composite of
 // the garment onto the torso area, with simulated latency, so the full flow
 // stays demoable without API credits.
-async function generateWithMock(personPath, garmentPath) {
-  const person = sharp(personPath).rotate(); // respect EXIF orientation
-  const meta = await person.metadata();
+async function generateWithMock(person, garment) {
+  const base = sharp(person.buffer).rotate(); // respect EXIF orientation
+  const meta = await base.metadata();
   const width = meta.width ?? 800;
   const height = meta.height ?? 1000;
 
   const garmentWidth = Math.round(width * 0.56);
-  const garment = await sharp(garmentPath, { density: 300 })
+  const overlay = await sharp(garment.buffer, { density: 300 })
     .resize({ width: garmentWidth })
     .png()
     .toBuffer();
-  const garmentMeta = await sharp(garment).metadata();
+  const overlayMeta = await sharp(overlay).metadata();
 
   const left = Math.round((width - garmentWidth) / 2);
   const top = Math.min(
     Math.round(height * 0.3),
-    Math.max(0, height - (garmentMeta.height ?? 0))
+    Math.max(0, height - (overlayMeta.height ?? 0))
   );
 
-  const outName = `${crypto.randomUUID()}.png`;
-  const [resultUrl] = await Promise.all([
-    person
-      .composite([{ input: garment, left, top }])
-      .png()
-      .toFile(path.join(RESULTS_DIR, outName))
-      .then(() => `/uploads/results/${outName}`),
+  const [composited] = await Promise.all([
+    base.composite([{ input: overlay, left, top }]).png().toBuffer(),
     sleep(POLL_SIMULATED_MS),
   ]);
-  return resultUrl;
+  return putImage(composited, { ext: ".png", kind: "result" });
 }
 
 /** Shopper-facing copy per failure cause, with the HTTP status to send. */
@@ -89,18 +85,22 @@ router.post(
     windowMs: config.tryonRateWindowMs,
     message: "You've hit the try-on limit for now. Try again a bit later.",
   }),
+  dailyCap(),
   async (req, res) => {
     const { personImageUrl, garmentImageUrl } = req.body || {};
     const settings = normalizeSettings(req.body?.settings);
 
-    const personPath = resolveLocal(personImageUrl);
-    const garmentPath = resolveLocal(garmentImageUrl);
-    if (!personPath || !garmentPath) {
+    if (!personImageUrl || !garmentImageUrl) {
       return res
         .status(400)
         .json({ error: "Both a photo and a clothing image are required.", code: "notfound" });
     }
-    if (!fs.existsSync(personPath) || !fs.existsSync(garmentPath)) {
+
+    const [person, garment] = await Promise.all([
+      loadImage(personImageUrl),
+      loadImage(garmentImageUrl),
+    ]);
+    if (!person || !garment) {
       return res
         .status(400)
         .json({ error: "Image not found. Upload it again.", code: "notfound" });
@@ -110,7 +110,7 @@ router.post(
 
     try {
       if (!useFashn) {
-        const resultUrl = await generateWithMock(personPath, garmentPath);
+        const resultUrl = await generateWithMock(person, garment);
         return res.json({
           resultUrl,
           engine: "mock-composite",
@@ -120,11 +120,7 @@ router.post(
         });
       }
 
-      const { resultUrl, model, credits } = await runTryOn({
-        settings,
-        personPath,
-        garmentPath,
-      });
+      const { resultUrl, model, credits } = await runTryOn({ settings, person, garment });
       return res.json({ resultUrl, engine: model, model, credits, settings });
     } catch (err) {
       console.error("try-on failed:", err.code || "", err.message);

@@ -5,17 +5,17 @@ import { requireAuth } from "../middleware/auth.js";
 const router = Router();
 router.use(requireAuth);
 
-router.get("/", (req, res) => {
-  const outfits = Outfits.find({ userId: req.userId }).sort(
+router.get("/", async (req, res) => {
+  const outfits = (await Outfits.find({ userId: req.userId })).sort(
     (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   );
   res.json({ outfits });
 });
 
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const { name, resultUrl, personImageUrl, garmentImageUrl } = req.body || {};
   if (!resultUrl) return res.status(400).json({ error: "Nothing to save yet — generate a preview first." });
-  const outfit = Outfits.create({
+  const outfit = await Outfits.create({
     userId: req.userId,
     name: (name || "Untitled look").trim(),
     resultUrl,
@@ -27,8 +27,8 @@ router.post("/", (req, res) => {
 
 const NAME_MAX = 60;
 
-router.patch("/:id", (req, res) => {
-  const outfit = Outfits.findById(req.params.id);
+router.patch("/:id", async (req, res) => {
+  const outfit = await Outfits.findById(req.params.id);
   // Same masking as delete: someone else's outfit is simply not found.
   if (!outfit || outfit.userId !== req.userId) {
     return res.status(404).json({ error: "Outfit not found." });
@@ -37,19 +37,19 @@ router.patch("/:id", (req, res) => {
   if (typeof name !== "string" || !name.trim()) {
     return res.status(400).json({ error: "Give this look a name." });
   }
-  const updated = Outfits.updateOne(
+  const updated = await Outfits.updateOne(
     { _id: req.params.id },
     { name: name.trim().slice(0, NAME_MAX) }
   );
   res.json({ outfit: updated });
 });
 
-router.delete("/:id", (req, res) => {
-  const outfit = Outfits.findById(req.params.id);
+router.delete("/:id", async (req, res) => {
+  const outfit = await Outfits.findById(req.params.id);
   if (!outfit || outfit.userId !== req.userId) {
     return res.status(404).json({ error: "Outfit not found." });
   }
-  Outfits.deleteOne({ _id: req.params.id });
+  await Outfits.deleteOne({ _id: req.params.id });
   res.json({ ok: true });
 });
 

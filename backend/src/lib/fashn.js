@@ -1,8 +1,6 @@
-import fs from "node:fs";
-import path from "node:path";
-import crypto from "node:crypto";
 import sharp from "sharp";
-import { config, RESULTS_DIR } from "../config.js";
+import { config } from "../config.js";
+import { putImage } from "./storage.js";
 import { modelFor, MODEL_HIGH, creditCost } from "./tryonSettings.js";
 
 /**
@@ -66,14 +64,14 @@ function fail(status, errorName, message) {
 }
 
 /**
- * FASHN accepts image URLs or base64 data URIs. Local dev images aren't
- * publicly reachable, so everything is sent inline. SVG catalog art is
- * rasterized first — the model expects photographic formats.
+ * FASHN accepts image URLs or base64 data URIs. Everything is sent inline
+ * because local dev images aren't publicly reachable at all, and sending the
+ * bytes works identically in both environments. SVG art is rasterized first —
+ * the model expects photographic formats.
  */
-export async function toDataUri(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
+export async function toDataUri(buffer, ext = ".jpg") {
   if (ext === ".svg") {
-    const png = await sharp(filePath, { density: 300 })
+    const png = await sharp(buffer, { density: 300 })
       .resize({ width: 1024, fit: "inside" })
       .flatten({ background: "#ffffff" })
       .png()
@@ -82,7 +80,7 @@ export async function toDataUri(filePath) {
   }
   const mime =
     ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
-  return `data:${mime};base64,${(await fs.promises.readFile(filePath)).toString("base64")}`;
+  return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
 /** tryon-max has no fit or background parameter — both live in the prompt. */
@@ -220,19 +218,14 @@ async function download(outputUrl, outputFormat) {
       retryable: true,
     });
   }
-  const ext = outputFormat === "jpeg" ? "jpg" : "png";
-  const outName = `${crypto.randomUUID()}.${ext}`;
-  await fs.promises.writeFile(
-    path.join(RESULTS_DIR, outName),
-    Buffer.from(await img.arrayBuffer())
-  );
-  return `/uploads/results/${outName}`;
+  const ext = outputFormat === "jpeg" ? ".jpg" : ".png";
+  return putImage(Buffer.from(await img.arrayBuffer()), { ext, kind: "result" });
 }
 
-async function runOnce(settings, personPath, garmentPath) {
+async function runOnce(settings, person, garment) {
   const [personUri, garmentUri] = await Promise.all([
-    toDataUri(personPath),
-    toDataUri(garmentPath),
+    toDataUri(person.buffer, person.ext),
+    toDataUri(garment.buffer, garment.ext),
   ]);
   const id = await submit(settings, personUri, garmentUri);
   const outputUrl = await poll(id);
@@ -248,20 +241,20 @@ export function isConfigured() {
  * out-of-credits or moderation-blocked request just spends time it can't fix,
  * and a retried generation that does succeed costs another credit.
  */
-export async function runTryOn({ settings, personPath, garmentPath }) {
+export async function runTryOn({ settings, person, garment }) {
   if (inFlight >= MAX_CONCURRENT) {
     throw new FashnError("rate_limit", "Too many try-ons in flight", { retryable: true });
   }
   inFlight += 1;
   try {
     try {
-      const resultUrl = await runOnce(settings, personPath, garmentPath);
+      const resultUrl = await runOnce(settings, person, garment);
       return { resultUrl, model: modelFor(settings), credits: creditCost(settings) };
     } catch (err) {
       if (!(err instanceof FashnError) || !err.retryable) throw err;
       console.warn(`FASHN transient failure (${err.code}), retrying once:`, err.message);
       await sleep(RETRY_BACKOFF_MS);
-      const resultUrl = await runOnce(settings, personPath, garmentPath);
+      const resultUrl = await runOnce(settings, person, garment);
       return { resultUrl, model: modelFor(settings), credits: creditCost(settings) };
     }
   } finally {

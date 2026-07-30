@@ -33,6 +33,23 @@ export const config = Object.freeze({
 
   fashnApiKey: process.env.FASHN_API_KEY || "",
 
+  // Both unset = the zero-setup local stack (JSON file + local uploads dir).
+  // Both set = the production stack (Atlas + Cloudinary). See store.js and
+  // lib/storage.js — nothing else in the app branches on these.
+  mongoUri: process.env.MONGODB_URI || "",
+  cloudinaryUrl: process.env.CLOUDINARY_URL || "",
+
+  // Sign-up gate. Empty = anyone can register, which is right locally. In
+  // production every generation spends real FASHN credits, so accounts are
+  // handed out by code.
+  signupInviteCodes: (process.env.SIGNUP_INVITE_CODES || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
+
+  // Whole-deployment ceiling on generations per UTC day. 0 = off.
+  tryonDailyGlobalCap: Number(process.env.TRYON_DAILY_GLOBAL_CAP) || 0,
+
   // Per-user sliding windows. Try-on costs real credits, so it is the tighter one.
   tryonRateLimit: num(process.env.TRYON_RATE_LIMIT, 20),
   tryonRateWindowMs: num(process.env.TRYON_RATE_WINDOW_MS, 60 * 60 * 1000),

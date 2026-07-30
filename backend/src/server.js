@@ -11,7 +11,8 @@ import uploadRoutes from "./routes/uploads.js";
 import clothingRoutes from "./routes/clothing.js";
 import tryonRoutes from "./routes/tryon.js";
 import outfitRoutes from "./routes/outfits.js";
-import { Clothing } from "./store.js";
+import { Clothing, connectStore, storeMode } from "./store.js";
+import { storageMode } from "./lib/storage.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -34,18 +35,25 @@ app.use("/api/clothing", clothingRoutes);
 app.use("/api/tryon", tryonRoutes);
 app.use("/api/outfits", outfitRoutes);
 
+// Also the wake-up ping: the frontend calls this on load so a sleeping free-tier
+// container is already booting by the time anything actually needs the API.
 app.get("/api/health", (_req, res) =>
-  res.json({ ok: true, service: "stylefit-api", tryonLive: Boolean(config.fashnApiKey) })
+  res.json({
+    ok: true,
+    service: "stylefit-api",
+    tryonLive: Boolean(config.fashnApiKey),
+    signupRequiresInvite: config.signupInviteCodes.length > 0,
+  })
 );
 
-// Seed the clothing catalog on first boot.
-if (Clothing.count() === 0) {
+// Seed the clothing catalog into an empty database.
+async function seedCatalog() {
+  if ((await Clothing.count()) > 0) return;
   const seedPath = path.join(__dirname, "..", "data", "catalog-seed.json");
-  if (fs.existsSync(seedPath)) {
-    const seed = JSON.parse(fs.readFileSync(seedPath, "utf8"));
-    Clothing.insertMany(seed);
-    console.log(`Seeded ${seed.length} catalog items`);
-  }
+  if (!fs.existsSync(seedPath)) return;
+  const seed = JSON.parse(fs.readFileSync(seedPath, "utf8"));
+  await Clothing.insertMany(seed);
+  console.log(`Seeded ${seed.length} catalog items`);
 }
 
 // The client reads `error` off every failure. Without these two, an unknown
@@ -64,9 +72,21 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: "Something went wrong on our end." });
 });
 
-app.listen(config.port, () => {
-  console.log(
-    `StyleFit API running on http://localhost:${config.port}` +
-      (config.fashnApiKey ? " (FASHN try-on live)" : " (offline mock try-on)")
-  );
+// Connect and seed before accepting traffic — a request that arrives mid-connect
+// would otherwise fail on a database that is one tick away from being ready.
+async function start() {
+  await connectStore();
+  await seedCatalog();
+  app.listen(config.port, () => {
+    console.log(
+      `StyleFit API running on http://localhost:${config.port}` +
+        ` [store: ${storeMode}, images: ${storageMode}]` +
+        (config.fashnApiKey ? " (FASHN try-on live)" : " (offline mock try-on)")
+    );
+  });
+}
+
+start().catch((err) => {
+  console.error("Failed to start:", err.message);
+  process.exit(1);
 });

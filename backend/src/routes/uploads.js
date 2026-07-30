@@ -1,12 +1,12 @@
 import { Router } from "express";
 import multer from "multer";
 import fs from "node:fs";
-import path from "node:path";
 import crypto from "node:crypto";
 import sharp from "sharp";
 import { config, UPLOADS_DIR } from "../config.js";
 import { requireAuth } from "../middleware/auth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
+import { putImage } from "../lib/storage.js";
 
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp"]);
 // sharp's format names -> the extension we store the file under.
@@ -36,8 +36,9 @@ async function discard(filePath) {
   await fs.promises.unlink(filePath).catch(() => {});
 }
 
-// Generic image upload (user photo or custom garment). Returns a URL served
-// from this API's /uploads static mount — same contract Cloudinary will fill later.
+// Generic image upload (user photo or custom garment). Returns whatever URL the
+// storage layer produced — an app-relative /uploads/ path locally, an absolute
+// Cloudinary URL in production.
 router.post(
   "/photo",
   requireAuth,
@@ -52,28 +53,37 @@ router.post(
       if (!req.file) return res.status(400).json({ error: "No image received." });
 
       const tempPath = req.file.path;
+      let buffer;
+      let ext;
       try {
         // The declared MIME type is just a claim. Decode the file to confirm
         // it really is an image, and take the format from what sharp reads.
         const meta = await sharp(tempPath).metadata();
-        const ext = EXT_BY_FORMAT[meta.format];
+        ext = EXT_BY_FORMAT[meta.format];
         if (!ext) {
-          await discard(tempPath);
           return res.status(400).json({ error: "Only JPG, PNG or WebP images up to 10MB." });
         }
         if ((meta.width ?? 0) < MIN_EDGE_PX || (meta.height ?? 0) < MIN_EDGE_PX) {
-          await discard(tempPath);
           return res.status(400).json({
             error: `That image is too small. Use one at least ${MIN_EDGE_PX}px on each side.`,
           });
         }
-
-        const finalName = `${path.basename(tempPath, ".upload")}${ext}`;
-        await fs.promises.rename(tempPath, path.join(UPLOADS_DIR, finalName));
-        res.status(201).json({ url: `/uploads/${finalName}` });
+        // Multer's temp file is a staging area in both modes — the storage
+        // layer decides where the bytes actually end up.
+        buffer = await fs.promises.readFile(tempPath);
       } catch {
+        return res.status(400).json({ error: "That file isn't a readable image. Try another." });
+      } finally {
         await discard(tempPath);
-        res.status(400).json({ error: "That file isn't a readable image. Try another." });
+      }
+
+      // A storage failure is ours, not the visitor's — telling them their photo
+      // is unreadable would send them off re-cropping a perfectly good image.
+      try {
+        res.status(201).json({ url: await putImage(buffer, { ext, kind: "upload" }) });
+      } catch (storeErr) {
+        console.error("upload storage failed:", storeErr.message);
+        res.status(502).json({ error: "Couldn't save that photo right now. Try again." });
       }
     });
   }
