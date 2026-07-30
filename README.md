@@ -1,10 +1,15 @@
 # StyleFit AI
 
+**Live: https://style-fit-ai-virtual-try-on.vercel.app**
+
 Image-based virtual clothing try-on web application.
-Live: **https://style-fit-ai-virtual-try-on.vercel.app**
 Independent Project — Diploma in Information Technology, UCSI College.
 
 Upload a personal photo and a clothing image (or pick from the catalog) to generate a virtual outfit preview, compare it against the original with a draggable reveal slider, and save looks to your account.
+
+> **Browsing the live site is open to anyone; creating an account needs an invite code.** Every try-on runs on a paid AI service, so accounts are handed out deliberately rather than left open to the internet. To run the whole thing yourself with no account and no API key, see [Run it](#run-it) — the offline engine below makes that work.
+
+> The API is hosted on a free tier that suspends when idle, so the first request after a quiet spell takes ~50 seconds while the container wakes. The page itself loads immediately.
 
 ## Architecture
 
@@ -38,12 +43,18 @@ docker compose up --build
 ```
 
 Then open **http://localhost:3000**. The API is on **http://localhost:4000**.
-Source is mounted for hot-reload; your account/outfits persist in
-`backend/data/db.json` between runs. Stop with `Ctrl+C` (or `docker compose down`).
+Source is mounted for hot-reload. With no configuration the app stores accounts and
+outfits in `backend/data/db.json` and images in `backend/uploads/`, both of which
+persist between runs. Stop with `Ctrl+C` (or `docker compose down`).
 
-Optional: to activate the real FASHN AI engine or set a JWT secret, copy
-`.env.example` to `.env` **at the repo root** and fill it in — compose reads it
-automatically.
+Everything works in this state — sign-up, uploads, the full three-step wizard, saved
+outfits — with the offline try-on engine standing in for FASHN. No accounts, no API
+keys, no invite code.
+
+Optional: copy `.env.example` to `.env` **at the repo root** and fill in what you
+want; compose reads it automatically. Each variable swaps one subsystem for a hosted
+service and each is independent, so you can enable the real AI engine without also
+needing a database, or vice versa.
 
 > On a phone/tablet on the same Wi-Fi, open `http://<your-computer-ip>:3000`.
 
@@ -64,6 +75,33 @@ npm run dev
 ```
 
 Running this way, the API key goes in `backend/.env` instead of the repo-root one.
+
+## Project structure
+
+```
+frontend/                     Next.js 16 (App Router), Tailwind v4, Framer Motion
+  app/                        one directory per route
+  components/                 UI, grouped by the surface that owns it
+  lib/api.ts                  every API call the client makes, in one file
+  lib/sizing.ts               size estimate — pure, deterministic, no round trip
+  lib/looks.ts                the real try-on results every marketing page reads from
+
+backend/
+  src/server.js               app wiring, health, error handling
+  src/config.js               all environment reading, validated, in one place
+  src/routes/                 auth · uploads · clothing · tryon · outfits
+  src/store.js                data store, picks JSON or MongoDB
+  src/store/                  the two implementations behind that choice
+  src/lib/storage.js          image store, picks disk or Cloudinary; owns isOwnedUrl()
+  src/lib/fashn.js            FASHN client: submit, poll, classify failures
+  src/lib/tryonSettings.js    which model each setting needs, and what it costs
+  src/middleware/             auth · per-user rate limit · global daily cap
+  test/smoke.mjs              49 integration tests
+
+docker-compose.yml            both services, one command
+render.yaml                   API deployment blueprint
+PRODUCT.md · DESIGN.md        product positioning and the visual system
+```
 
 ## Pages
 
@@ -157,6 +195,32 @@ The hosted build runs entirely on free tiers, none of which require a payment ca
 
 **Limits worth knowing.** Atlas M0 is 512MB; Cloudinary's free tier is 25 credits/month, so a genuinely popular deployment would exhaust its bandwidth and images would stop loading. The daily try-on cap is held in memory, so a restart resets it — the invite gate is the control that actually holds.
 
+## Environment variables
+
+All optional. Each one swaps a single subsystem from its zero-setup local default to a hosted service, independently of the others. Full descriptions in `.env.example`.
+
+| Variable | Unset | Set |
+|---|---|---|
+| `FASHN_API_KEY` | offline sharp composite, no cost | real FASHN try-on |
+| `MONGODB_URI` | `backend/data/db.json` | MongoDB |
+| `CLOUDINARY_URL` | `backend/uploads/` on disk | Cloudinary |
+| `SIGNUP_INVITE_CODES` | open registration | invite code required |
+| `TRYON_DAILY_GLOBAL_CAP` | no daily ceiling | that many try-ons per UTC day |
+| `TRYON_RATE_LIMIT` | 20 per user per hour | that many per user per hour |
+| `CORS_ORIGINS` | any origin (local and LAN testing) | only the listed origins |
+| `JWT_SECRET` | insecure development default | signs session tokens |
+| `NEXT_PUBLIC_API_BASE` | `<page host>:4000` | that API base (required in production) |
+
+## Known limitations
+
+Stated plainly rather than left for a reader to find:
+
+- **Size estimates are estimates.** They come from published size-chart ranges given height, weight, gender and preferred fit — not from measuring the photograph. The interface says so, and shows a confidence indicator reflecting how much of the profile was filled in.
+- **Uploaded photos reach a third party.** With the live engine on, the photo is sent to FASHN to generate the result. The upload screen says this rather than claiming the image never leaves the server.
+- **The catalog is eleven garments.** Small, but every item is real photography — earlier placeholder illustrations were removed because a virtual try-on that shows you a drawing undercuts its own claim.
+- **The global daily cap is held in memory**, so a restart resets it. Invite-gated registration is the control that actually holds.
+- **Free-tier ceilings apply**: cold starts after idle, MongoDB Atlas M0 at 512MB, Cloudinary at 25 credits/month.
+
 ## Credits
 
-Garment and model photography under `frontend/public/` and `backend/public/garments/` is third-party product imagery used as try-on input for this academic project, and is not owned by the author.
+Garment and model photography under `frontend/public/` and `backend/public/garments/` is third-party product imagery — sourced from iStock, Uniqlo, H&M and Paper Rex — used as try-on input for this academic project. It is not owned by the author and is not licensed for commercial use.
