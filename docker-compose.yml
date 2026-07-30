@@ -11,6 +11,12 @@ services:
       - PORT=4000
       - JWT_SECRET=${JWT_SECRET:-stylefit-dev-secret-change-in-production}
       - FASHN_API_KEY=${FASHN_API_KEY:-} # unset -> sharp mock try-on path
+      # All unset locally. Set them in the root .env to run the stack exactly as
+      # production does — the same hosted database, image store and sign-up gate.
+      - MONGODB_URI=${MONGODB_URI:-} # unset -> data/db.json
+      - CLOUDINARY_URL=${CLOUDINARY_URL:-} # unset -> uploads/ on disk
+      - SIGNUP_INVITE_CODES=${SIGNUP_INVITE_CODES:-} # unset -> open registration
+      - TRYON_DAILY_GLOBAL_CAP=${TRYON_DAILY_GLOBAL_CAP:-} # unset -> no daily cap
     volumes:
       - ./backend:/app # source + data/db.json + uploads persistence
       - /app/node_modules # anon volume: keep container's linux modules
