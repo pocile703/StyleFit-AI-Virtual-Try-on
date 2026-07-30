@@ -16,26 +16,20 @@ import { config, UPLOADS_DIR, RESULTS_DIR, GARMENTS_DIR } from "../config.js";
 
 const FETCH_TIMEOUT_MS = 20_000;
 
-// cloudinary://<key>:<secret>@<cloud-name>
-function cloudNameFrom(url) {
-  try {
-    return new URL(url).hostname || "";
-  } catch {
-    return "";
-  }
-}
+// Parsed and validated in config.js — it has to happen there, before the
+// Cloudinary SDK is imported, because the SDK reads the same variable during
+// its own module evaluation and dies on a bad one.
+const credentials = config.cloudinary;
+const CLOUD_NAME = credentials?.cloudName ?? "";
+const useCloudinary = Boolean(credentials);
 
-const CLOUD_NAME = config.cloudinaryUrl ? cloudNameFrom(config.cloudinaryUrl) : "";
-const useCloudinary = Boolean(CLOUD_NAME);
-
-if (useCloudinary) {
+if (credentials) {
   // The SDK reads CLOUDINARY_URL from the environment itself; being explicit
   // keeps it working if the value ever comes from somewhere other than env.
-  const parsed = new URL(config.cloudinaryUrl);
   cloudinary.config({
-    cloud_name: CLOUD_NAME,
-    api_key: decodeURIComponent(parsed.username),
-    api_secret: decodeURIComponent(parsed.password),
+    cloud_name: credentials.cloudName,
+    api_key: credentials.apiKey,
+    api_secret: credentials.apiSecret,
     secure: true,
   });
 }

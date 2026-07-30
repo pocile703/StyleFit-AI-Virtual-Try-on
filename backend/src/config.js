@@ -19,6 +19,46 @@ function num(value, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+/**
+ * Parse `cloudinary://<api-key>:<api-secret>@<cloud-name>`.
+ *
+ * This has to happen here, in the first module the server imports, because the
+ * Cloudinary SDK parses the same variable while its own module is being
+ * imported — and on a malformed value it throws a bare ERR_INVALID_URL from
+ * inside node's URL parser. The process dies at boot pointing at a stack frame
+ * that says nothing about which variable is wrong. Dropping the @<cloud-name>
+ * suffix while copying the value is an easy mistake and should not cost an
+ * afternoon to diagnose.
+ */
+function parseCloudinaryUrl(value) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "cloudinary:") return null;
+  const parsed = {
+    cloudName: url.hostname,
+    apiKey: decodeURIComponent(url.username),
+    apiSecret: decodeURIComponent(url.password),
+  };
+  return parsed.cloudName && parsed.apiKey && parsed.apiSecret ? parsed : null;
+}
+
+const cloudinaryUrl = process.env.CLOUDINARY_URL || "";
+const cloudinaryCredentials = cloudinaryUrl ? parseCloudinaryUrl(cloudinaryUrl) : null;
+
+if (cloudinaryUrl && !cloudinaryCredentials) {
+  // Silently falling back to local disk would be worse than stopping: on a host
+  // with an ephemeral filesystem it appears to work until the first restart
+  // eats every uploaded photo — the exact failure Cloudinary is here to prevent.
+  throw new Error(
+    "CLOUDINARY_URL is malformed. Expected cloudinary://<api-key>:<api-secret>@<cloud-name>" +
+      " — check the @<cloud-name> suffix is present."
+  );
+}
+
 export const UPLOADS_DIR = path.join(ROOT, "uploads");
 export const RESULTS_DIR = path.join(UPLOADS_DIR, "results");
 export const GARMENTS_DIR = path.join(ROOT, "public", "garments");
@@ -37,7 +77,8 @@ export const config = Object.freeze({
   // Both set = the production stack (Atlas + Cloudinary). See store.js and
   // lib/storage.js — nothing else in the app branches on these.
   mongoUri: process.env.MONGODB_URI || "",
-  cloudinaryUrl: process.env.CLOUDINARY_URL || "",
+  // Null unless CLOUDINARY_URL is set and well-formed; validated above.
+  cloudinary: cloudinaryCredentials,
 
   // Sign-up gate. Empty = anyone can register, which is right locally. In
   // production every generation spends real FASHN credits, so accounts are
