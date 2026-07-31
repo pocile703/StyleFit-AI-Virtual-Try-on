@@ -31,7 +31,10 @@ export default function Avatar({
   }
   return (
     <span
-      className={`grid place-items-center ${SIZES[size]} rounded-full bg-ash text-paper font-semibold ${className}`}
+      // `stone`, not `ash` — the initial letter runs at 12px in the `sm` size,
+      // where ash on paper measures 4.17:1 and misses AA. Same fix the wordmark
+      // already took.
+      className={`grid place-items-center ${SIZES[size]} rounded-full bg-stone text-paper font-semibold ${className}`}
     >
       {user.name.charAt(0).toUpperCase()}
     </span>

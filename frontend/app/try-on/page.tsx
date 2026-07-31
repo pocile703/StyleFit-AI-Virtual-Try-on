@@ -1,18 +1,19 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import StepRail from "@/components/tryon/StepRail";
 import Dropzone from "@/components/tryon/Dropzone";
 import CatalogPicker from "@/components/tryon/CatalogPicker";
-import ResultStage from "@/components/tryon/ResultStage";
+import ResultStage, { type GeneratedResult } from "@/components/tryon/ResultStage";
 import TryOnSettings from "@/components/tryon/TryOnSettings";
 import { fetchEngineInfo, imageUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
   DEFAULT_SETTINGS,
+  creditCost,
   hydrateSettings,
   type TryOnSettings as Settings,
 } from "@/lib/tryon";
@@ -46,6 +47,35 @@ function TryOnWizard() {
   const [engineLive, setEngineLive] = useState(false);
   const [runId, setRunId] = useState(0);
   const [lastPerson, setLastPerson] = useState<string | null>(null);
+  // The finished run, tagged with the inputs that produced it. Stepping back to
+  // change a photo used to throw the result away, and coming forward billed a
+  // fresh generation for the same three inputs — an accidental way to spend
+  // real credits and lose an unsaved look at the same time.
+  const [result, setResult] = useState<
+    (GeneratedResult & { key: string }) | null
+  >(null);
+
+  const runKey = JSON.stringify({ personUrl, garmentUrl, settings });
+  const cachedResult = result?.key === runKey ? result : null;
+
+  const keepResult = useCallback(
+    (r: GeneratedResult) => setResult({ ...r, key: runKey }),
+    [runKey]
+  );
+
+  // Advancing a step unmounts the button that had focus, dropping it to <body>
+  // with nothing announcing the move. Focus lands on the new step's heading
+  // instead — but never on first paint, which would yank a fresh visitor's
+  // focus out of the page they just opened.
+  const mounted = useRef(false);
+  const focusHeading = useCallback((node: HTMLHeadingElement | null) => {
+    if (!node) return;
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    node.focus();
+  }, []);
 
   // Restore after mount (avoids SSR/client hydration mismatch).
   useEffect(() => {
@@ -128,7 +158,11 @@ function TryOnWizard() {
           {step === 0 && (
             <motion.section key="photo" {...slide} aria-label="Upload your photo">
               <div className="max-w-xl mx-auto text-center">
-                <h1 className="font-display font-semibold text-3xl md:text-4xl tracking-tight">
+                <h1
+                  ref={focusHeading}
+                  tabIndex={-1}
+                  className="font-display font-semibold text-3xl md:text-4xl tracking-tight"
+                >
                   Upload your photo
                 </h1>
                 <p className="mt-2 text-stone">
@@ -254,7 +288,7 @@ function TryOnWizard() {
                 </motion.button>
 
                 <details className="group mt-8 text-left border-t border-mist pt-5">
-                  <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium text-stone hover:text-ink transition-colors">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-sm font-medium text-stone hover:text-ink transition-colors">
                     <span>Tips &amp; common questions</span>
                     <svg
                       viewBox="0 0 24 24"
@@ -300,7 +334,11 @@ function TryOnWizard() {
           {step === 1 && (
             <motion.section key="clothing" {...slide} aria-label="Select clothing">
               <div className="max-w-xl mx-auto text-center mb-8">
-                <h1 className="font-display font-semibold text-3xl md:text-4xl tracking-tight">
+                <h1
+                  ref={focusHeading}
+                  tabIndex={-1}
+                  className="font-display font-semibold text-3xl md:text-4xl tracking-tight"
+                >
                   Pick the garment
                 </h1>
                 <p className="mt-2 text-stone">
@@ -338,14 +376,26 @@ function TryOnWizard() {
                         setStep(0);
                         return;
                       }
-                      setRunId((n) => n + 1);
+                      // Only bump runId — which forces ResultStage to remount and
+                      // generate — when there's nothing already paid for.
+                      if (!cachedResult) setRunId((n) => n + 1);
                       setStep(2);
                     }}
                     disabled={!garmentUrl}
                     whileTap={garmentUrl ? { scale: 0.97 } : undefined}
                     className="px-7 py-3 rounded-full font-medium transition-colors enabled:bg-noir enabled:text-paper enabled:hover:bg-noir-deep disabled:bg-transparent disabled:border disabled:border-mist disabled:text-stone disabled:cursor-not-allowed"
                   >
-                    {personUrl ? "Generate preview" : "Add your photo first"}
+                    {!personUrl
+                      ? "Add your photo first"
+                      : cachedResult
+                        ? "Back to your result"
+                        : `Generate preview${
+                            engineLive
+                              ? ` · ${creditCost(settings)} credit${
+                                  creditCost(settings) === 1 ? "" : "s"
+                                }`
+                              : ""
+                          }`}
                   </motion.button>
                 ) : (
                   // Generating spends real credits, so it's account-gated. The
@@ -369,7 +419,9 @@ function TryOnWizard() {
 
           {step === 2 && personUrl && personPreview && garmentUrl && (
             <motion.section key={`result-${runId}`} {...slide} aria-label="Preview result">
-              <h1 className="sr-only">Your try-on preview</h1>
+              <h1 ref={focusHeading} tabIndex={-1} className="sr-only">
+                Your try-on preview
+              </h1>
               <ResultStage
                 personUrl={personUrl}
                 personPreview={personPreview}
@@ -378,6 +430,9 @@ function TryOnWizard() {
                 settings={settings}
                 onTryOther={() => setStep(1)}
                 onChangePhoto={() => setStep(0)}
+                initialResult={cachedResult}
+                onResult={keepResult}
+                engineLive={engineLive}
               />
             </motion.section>
           )}

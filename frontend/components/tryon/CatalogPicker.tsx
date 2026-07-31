@@ -37,6 +37,13 @@ export default function CatalogPicker({
   const visible =
     category === "All" ? items : items.filter((i) => i.category === category);
 
+  // A filter has to earn its place. The catalog currently holds 11 garments
+  // across three non-empty categories, so the chip row is a control that can
+  // only ever remove a couple of tiles from a grid you can already see whole —
+  // pure load on the busiest screen in the wizard. It comes back on its own
+  // once the catalog is big enough for filtering to be worth the tap.
+  const showCategories = categories.length > 4 && items.length >= 16;
+
   return (
     <div>
       <SegmentedControl
@@ -67,21 +74,23 @@ export default function CatalogPicker({
             className="mt-7"
           >
             {/* category chips */}
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setCategory(c)}
-                  className={`inline-flex shrink-0 items-center min-h-11 px-4 rounded-full text-sm font-medium transition-colors ${
-                    category === c
-                      ? "bg-noir text-paper"
-                      : "bg-veil text-stone hover:text-ink"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
+            {showCategories && (
+              <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+                {categories.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCategory(c)}
+                    className={`inline-flex shrink-0 items-center min-h-11 px-4 rounded-full text-sm font-medium transition-colors ${
+                      category === c
+                        ? "bg-noir text-paper"
+                        : "bg-veil text-stone hover:text-ink"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* grid */}
             {loading ? (
@@ -99,8 +108,8 @@ export default function CatalogPicker({
               </div>
             ) : loadError ? (
               <p className="mt-8 text-center text-stone">
-                Couldn&apos;t load the catalog. Check that the API server is
-                running, then refresh.
+                The catalog didn&apos;t load. Refresh the page to try again, or
+                upload your own clothing image instead.
               </p>
             ) : visible.length === 0 ? (
               <p className="mt-8 text-center text-stone">
@@ -122,13 +131,15 @@ export default function CatalogPicker({
                         transition={{ duration: 0.25 }}
                         onClick={() => onSelect(item.imageUrl, item.name)}
                         aria-pressed={selected}
-                        className={`group relative text-left rounded-2xl border-2 p-3 pb-4 transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:shadow-[0_14px_30px_-16px_rgba(11,11,12,0.25)] ${
+                        className={`group relative text-left rounded-2xl border-2 p-3 pb-4 transition-[transform,box-shadow,border-color] hover:-translate-y-1 hover:shadow-[var(--shadow-lift)] ${
                           selected
                             ? "border-noir bg-veil/60"
                             : "border-mist bg-card/70 hover:border-stone"
                         }`}
                       >
-                        <span className="block aspect-square rounded-xl bg-gradient-to-b from-veil/60 to-mist/40 p-4">
+                        {/* Flat `veil`, not a gradient — this is a workroom
+                            surface, where hierarchy is tonal (DESIGN.md §4). */}
+                        <span className="block aspect-square rounded-xl bg-veil/60 p-4">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={imageUrl(item.imageUrl)}

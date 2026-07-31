@@ -55,7 +55,10 @@ export default function SizeRecommendation({ body, units }: SizeRecommendationPr
         ].map(([label, size]) => (
           <div key={label} className="rounded-2xl bg-veil px-4 py-4 text-center">
             <p className="text-xs font-medium text-stone">{label}</p>
-            <p className="mt-1 font-display font-semibold text-3xl tracking-tight">
+            {/* Body font, not Clash: this is data, and the display face belongs
+                to headlines (DESIGN.md §3, and the product register's ban on
+                display type in UI labels and values). */}
+            <p className="mt-1 font-semibold text-3xl tracking-tight tabular-nums">
               {size}
             </p>
           </div>

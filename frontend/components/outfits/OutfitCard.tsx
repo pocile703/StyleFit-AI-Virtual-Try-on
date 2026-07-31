@@ -16,7 +16,9 @@ interface OutfitCardProps {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-MY", {
+  // `undefined` = the visitor's own locale. Hardcoding en-MY printed Malaysian
+  // date order to everyone, including the visitors this is deployed for.
+  return new Date(iso).toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",

@@ -82,6 +82,32 @@ export function errorCode(err: unknown): ErrorCode | null {
   return null;
 }
 
+/**
+ * How long the API says to wait before retrying, in seconds.
+ *
+ * Both rate limiters send this and it used to be thrown away, so a shopper who
+ * hit the *daily* cap was told to "give it a minute" and retried into the same
+ * wall until they gave up. The window is the difference between an honest stop
+ * and a loop: the per-user limiter clears in minutes, the daily one at UTC
+ * midnight.
+ */
+export function errorRetryAfter(err: unknown): number | null {
+  if (axios.isAxiosError(err)) {
+    const v = err.response?.data?.retryAfterSec;
+    return typeof v === "number" && v > 0 ? v : null;
+  }
+  return null;
+}
+
+/** "about 4 hours" / "about 20 minutes" — for recovery copy, not a countdown. */
+export function formatWait(seconds: number): string {
+  if (seconds < 90) return "a minute";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} minutes`;
+  const hours = Math.round(seconds / 3600);
+  return hours === 1 ? "an hour" : `${hours} hours`;
+}
+
 /** Body type isn't here — it already lives in `preferences.bodyType`. */
 export interface BodyProfile {
   heightCm: number | null;

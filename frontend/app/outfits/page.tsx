@@ -133,7 +133,7 @@ function OutfitsContent() {
         {outfits && outfits.length > 0 && (
           <Link
             href="/try-on"
-            className="px-5 py-2.5 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors"
+            className="inline-flex items-center min-h-11 px-5 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors"
           >
             + New try-on
           </Link>

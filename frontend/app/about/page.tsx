@@ -52,8 +52,8 @@ const SDGS = [
 const STACK = [
   ["Client", "React + Next.js + Tailwind CSS"],
   ["API server", "Node.js + Express REST API"],
-  ["AI service", "FASHN AI Virtual Try-On (tryon-v1.6)"],
-  ["Storage", "MongoDB + Cloudinary (planned)"],
+  ["AI service", "FASHN AI Virtual Try-On (tryon-v1.6 · tryon-max)"],
+  ["Storage", "MongoDB Atlas + Cloudinary"],
 ];
 
 export default function AboutPage() {
@@ -142,18 +142,34 @@ export default function AboutPage() {
             Sustainable Development Goals
           </h2>
         </Reveal>
-        <Stagger className="mt-6 grid md:grid-cols-3 gap-4">
-          {SDGS.map((s) => (
-            <StaggerItem key={s.n} className="h-full">
-              <TiltCard className="p-6 rounded-2xl bg-veil/60">
-                <span className="inline-block eyebrow text-paper bg-accent px-2 py-0.5">{s.n}</span>
-                <h3 className="mt-3 font-display font-medium text-lg leading-snug">
-                  {s.title}
-                </h3>
-                <p className="mt-2 text-sm text-stone leading-relaxed">
-                  {s.body}
-                </p>
-              </TiltCard>
+        {/* Deliberately not a third tilt-card grid. The problem section above
+            already runs one, and repeating the same card at the same rhythm is
+            the "identical card grids" tell — so this section borrows the
+            bordered-row treatment the architecture table uses instead. */}
+        <Stagger className="mt-6 rounded-2xl border border-mist overflow-hidden">
+          {SDGS.map((s, i) => (
+            <StaggerItem key={s.n}>
+              <div
+                className={`flex flex-col gap-2 px-5 py-5 sm:flex-row sm:items-baseline sm:gap-6 ${
+                  i > 0 ? "border-t border-mist" : ""
+                }`}
+              >
+                {/* Fixed column so "SDG 9" and "SDG 12" start their titles on
+                    the same line — the markers are different widths. */}
+                <span className="shrink-0 sm:w-20">
+                  <span className="eyebrow inline-block bg-accent px-2 py-0.5 text-paper">
+                    {s.n}
+                  </span>
+                </span>
+                <div>
+                  <h3 className="font-display font-medium text-lg leading-snug">
+                    {s.title}
+                  </h3>
+                  <p className="mt-1.5 max-w-prose text-sm text-stone leading-relaxed">
+                    {s.body}
+                  </p>
+                </div>
+              </div>
             </StaggerItem>
           ))}
         </Stagger>

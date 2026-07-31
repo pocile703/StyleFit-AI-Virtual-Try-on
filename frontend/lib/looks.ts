@@ -42,7 +42,9 @@ export const LOOKS: Look[] = [
   {
     id: "ruffle-skirt",
     label: "Black Ruffle Skirt",
-    category: "More",
+    // Matches the backend catalog's own category name — the marquee tile and
+    // the picker chip used to disagree about where this garment lives.
+    category: "Skirts",
     before: "/looks/base-outdoor.jpg",
     after: "/looks/look-ruffle-skirt.jpg",
     garment: "/catalog/ruffle-skirt.jpg",

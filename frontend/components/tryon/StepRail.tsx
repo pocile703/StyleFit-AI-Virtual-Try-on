@@ -34,8 +34,13 @@ export default function StepRail({
                     "aria-label": `Go back to ${label}`,
                   }
                 : {})}
+              // Below `sm` the label is hidden, so a back-jump button collapses
+              // to the bare 32px circle. The minimums keep the hit area at 44px
+              // on the viewport where it matters most.
               className={`flex items-center gap-2.5 ${
-                canGoBack ? "cursor-pointer group/step" : ""
+                canGoBack
+                  ? "min-h-11 min-w-11 justify-center cursor-pointer group/step"
+                  : ""
               }`}
             >
               <span

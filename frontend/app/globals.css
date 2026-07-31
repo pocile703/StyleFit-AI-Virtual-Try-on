@@ -28,6 +28,14 @@
      drop shadow. Used only for the scrolled glass nav (earned by interaction). */
   --shadow-ambient: 0 10px 34px -18px rgba(11, 11, 12, 0.22);
 
+  /* Depth for elements that genuinely float over imagery or hang in 3D space.
+     These MUST be tokens, not literals: an ink shadow on near-black paper is
+     invisible, so the dark values swap the haze for a faint light rim that
+     still separates the card from the page. */
+  --shadow-figure: 0 30px 70px -30px rgba(11, 11, 12, 0.5);
+  --shadow-figure-soft: 0 24px 60px -24px rgba(11, 11, 12, 0.3);
+  --shadow-lift: 0 14px 30px -16px rgba(11, 11, 12, 0.25);
+
   /* Semantic z-index scale — one source of truth so layers stack predictably.
      Reference via `z-[var(--z-sticky)]` etc. Add new layers here, never inline. */
   --z-sticky: 30;   /* the sticky top Nav */
@@ -47,6 +55,11 @@
   --color-card: #1b1b1e;
   /* Deeper, cooler haze so the scrolled nav still separates on near-black. */
   --shadow-ambient: 0 12px 40px -16px rgba(0, 0, 0, 0.6);
+  /* A black haze over near-black paper renders as nothing, so the floating
+     tiers add a hairline light rim — that, not the blur, does the separating. */
+  --shadow-figure: 0 30px 70px -26px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.09);
+  --shadow-figure-soft: 0 24px 60px -22px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-lift: 0 14px 30px -14px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
   /* Accent aliases ink (inverts automatically); its glow goes light in dark so a
      card edge still reads on near-black. */
   --color-accent-glow: rgba(255, 255, 255, 0.14);
@@ -80,14 +93,10 @@ body {
   color: var(--color-paper);
 }
 
-/* Catalog marquee: a real scroll container (drag/swipe works), auto-advanced
-   by JS. Scrollbar hidden — the motion itself communicates scrollability. */
-.no-scrollbar {
-  scrollbar-width: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
+/* (A `.no-scrollbar` helper used to live here. It was left behind when the
+   marquee moved to a drag-scrubbed track, and hiding the scrollbar is wrong on
+   the one row that still needs it: the reduced-motion fallback has no motion to
+   communicate scrollability with, so the native bar is the only affordance.) */
 
 :focus-visible {
   outline: 2px solid var(--color-ink);

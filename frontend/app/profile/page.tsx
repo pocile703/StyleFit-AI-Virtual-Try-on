@@ -19,7 +19,12 @@ const EMPTY_BODY: BodyProfile = {
   preferredFit: "",
 };
 
-const PREF_FIELDS = [
+// Split by what the field actually does. `bodyType` feeds the size estimate but
+// used to sit in the same undifferentiated block as the theme switcher, so the
+// card asked for nine unrelated things at once and the estimator's own "add
+// your body type" hint pointed into a different visual group than the
+// measurements it sat beside.
+const BODY_PREF_FIELDS = [
   {
     key: "bodyType" as const,
     label: "Body type",
@@ -30,6 +35,9 @@ const PREF_FIELDS = [
     label: "Skin tone",
     options: ["", "Light", "Medium", "Tan", "Deep"],
   },
+];
+
+const DISPLAY_FIELDS = [
   {
     key: "units" as const,
     label: "Units",
@@ -42,16 +50,62 @@ const PREF_FIELDS = [
   },
 ];
 
+/** One pill select — the same control both preference groups render. */
+function PrefSelect({
+  field,
+  value,
+  onChange,
+}: {
+  field: { key: string; label: string; options: string[] };
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="block mb-1.5 text-sm font-medium">{field.label}</span>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full pl-5 pr-10 py-3 rounded-full border border-mist bg-card/70 focus:border-noir transition-colors appearance-none cursor-pointer"
+        >
+          {field.options.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt === "" ? "Not set" : opt}
+            </option>
+          ))}
+        </select>
+        <svg
+          viewBox="0 0 24 24"
+          className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </div>
+    </label>
+  );
+}
+
 function ProfileContent() {
   const { user, refreshUser } = useAuth();
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [name, setName] = useState("");
+  // Theme is deliberately NOT in here. It has one live owner — the provider the
+  // nav toggle writes to — and keeping a second copy in form state is what made
+  // saving an unrelated field re-apply a stale value and flip the whole app
+  // back. The select below reads the provider and writes straight to it.
   const [prefs, setPrefs] = useState({
     bodyType: "",
     skinTone: "",
     units: "Metric (cm)",
-    theme: "Light",
   });
+  const themeLabel = theme === "dark" ? "Dark" : "Light";
   const [body, setBody] = useState<BodyProfile>(EMPTY_BODY);
   const [saving, setSaving] = useState(false);
   const [savedTick, setSavedTick] = useState(false);
@@ -62,7 +116,11 @@ function ProfileContent() {
   useEffect(() => {
     if (!user) return;
     setName(user.name);
-    setPrefs((p) => ({ ...p, ...user.preferences }));
+    setPrefs({
+      bodyType: user.preferences.bodyType ?? "",
+      skinTone: user.preferences.skinTone ?? "",
+      units: user.preferences.units || "Metric (cm)",
+    });
     // Accounts created before the size estimator have no body object.
     setBody((b) => ({ ...b, ...user.body }));
   }, [user]);
@@ -74,7 +132,8 @@ function ProfileContent() {
     try {
       const res = await api.patch("/api/auth/me", {
         name,
-        preferences: prefs,
+        // Persist whatever theme is actually live, never a stale form copy.
+        preferences: { ...prefs, theme: themeLabel },
         body,
       });
       // The server keeps the previous value for a measurement it can't accept,
@@ -88,8 +147,8 @@ function ProfileContent() {
         );
       }
       await refreshUser();
-      // Theme preference applies immediately on save.
-      setTheme(prefs.theme === "Dark" ? "dark" : "light");
+      // Theme is already applied — the select switches it the moment it changes.
+      // Saving only persists whatever is live, it never re-applies a stale copy.
       if (!rejected.length) {
         setSavedTick(true);
         setTimeout(() => setSavedTick(false), 2200);
@@ -131,8 +190,14 @@ function ProfileContent() {
       </p>
 
       <form onSubmit={save} className="mt-8 flex flex-col gap-8">
+        {/* These headings were all `.eyebrow` — 0.72rem tracked caps in muted
+            grey — so the page had no heading tier at all between the h1 and its
+            body copy, and the eyebrow read as decoration stacked above every
+            block. They're titles now, per DESIGN.md §3. */}
         <section className="p-6 rounded-2xl border border-mist bg-card/60">
-          <h2 className="eyebrow text-stone">Profile information</h2>
+          <h2 className="font-display font-medium text-xl tracking-tight">
+            Profile information
+          </h2>
 
           {/* avatar */}
           <div className="mt-5 flex items-center gap-5">
@@ -213,10 +278,11 @@ function ProfileContent() {
         </section>
 
         <section className="p-6 rounded-2xl border border-mist bg-card/60">
-          <h2 className="eyebrow text-stone">Fit &amp; preferences</h2>
+          <h2 className="font-display font-medium text-xl tracking-tight">
+            Fit &amp; preferences
+          </h2>
           <p className="mt-2 text-xs text-stone">
-            Your measurements drive the size estimate below. Theme switches the
-            whole app between light and dark.
+            Everything here feeds the size estimate below.
           </p>
 
           <BodyFields
@@ -225,45 +291,45 @@ function ProfileContent() {
             units={prefs.units}
           />
           <div className="mt-5 grid sm:grid-cols-2 gap-4">
-            {PREF_FIELDS.map((field) => (
-              <label key={field.key} className="block">
-                <span className="block mb-1.5 text-sm font-medium">
-                  {field.label}
-                </span>
-                <div className="relative">
-                  <select
-                    value={prefs[field.key]}
-                    onChange={(e) =>
-                      setPrefs((p) => ({ ...p, [field.key]: e.target.value }))
-                    }
-                    className="w-full pl-5 pr-10 py-3 rounded-full border border-mist bg-card/70 focus:border-noir transition-colors appearance-none cursor-pointer"
-                  >
-                    {field.options.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt === "" ? "Not set" : opt}
-                      </option>
-                    ))}
-                  </select>
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                </div>
-              </label>
+            {BODY_PREF_FIELDS.map((field) => (
+              <PrefSelect
+                key={field.key}
+                field={field}
+                value={prefs[field.key]}
+                onChange={(v) => setPrefs((p) => ({ ...p, [field.key]: v }))}
+              />
             ))}
+          </div>
+
+          <div className="mt-7 border-t border-mist pt-5">
+            <h3 className="text-sm font-medium">Display</h3>
+            <p className="mt-1 text-xs text-stone">
+              How the app reads back to you. Theme applies the moment you change
+              it — no need to save.
+            </p>
+            <div className="mt-4 grid sm:grid-cols-2 gap-4">
+              {DISPLAY_FIELDS.map((field) => {
+                const isTheme = field.key === "theme";
+                return (
+                  <PrefSelect
+                    key={field.key}
+                    field={field}
+                    value={isTheme ? themeLabel : prefs.units}
+                    onChange={(v) => {
+                      if (isTheme) setTheme(v === "Dark" ? "dark" : "light");
+                      else setPrefs((p) => ({ ...p, units: v }));
+                    }}
+                  />
+                );
+              })}
+            </div>
           </div>
         </section>
 
         <section className="p-6 rounded-2xl border border-mist bg-card/60">
-          <h2 className="eyebrow text-stone">Your size</h2>
+          <h2 className="font-display font-medium text-xl tracking-tight">
+            Your size
+          </h2>
           <p className="mt-2 text-xs text-stone">
             Worked out from your profile. Nothing is measured for you — these
             are estimates to start from.

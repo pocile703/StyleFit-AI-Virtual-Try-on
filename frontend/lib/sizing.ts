@@ -68,6 +68,24 @@ function bandToLetter(value: number, bands: number[]): string {
   return LETTER_SIZES[index === -1 ? LETTER_SIZES.length - 1 : index];
 }
 
+/**
+ * The size bands to measure against.
+ *
+ * An unstated or withheld gender averages the two tables, the same way
+ * `measurementsFor` already averages the regressions. It used to fall through
+ * to the men's chart, so someone who picked "Prefer not to say" was silently
+ * sized against it — on a product that claims everyone previews clothing on
+ * their own body rather than a narrow set of model types.
+ */
+function bandsFor(
+  gender: Gender,
+  table: Record<"female" | "male", number[]>
+): number[] {
+  if (gender === "female") return table.female;
+  if (gender === "male") return table.male;
+  return table.male.map((upper, i) => Math.round((upper + table.female[i]) / 2));
+}
+
 /** Shift a letter size by one step — how a fit preference actually reads. */
 function shiftSize(size: string, steps: number): string {
   const index = LETTER_SIZES.indexOf(size as (typeof LETTER_SIZES)[number]);
@@ -140,7 +158,6 @@ export function estimateSizing(body: SizingInput | undefined): SizingEstimate | 
     shoulder: Math.round(raw.shoulder),
   };
 
-  const table = gender === "female" ? "female" : "male";
   const fitShift =
     body.preferredFit === "Relaxed" ? 1 : body.preferredFit === "Slim" ? -1 : 0;
 
@@ -149,8 +166,14 @@ export function estimateSizing(body: SizingInput | undefined): SizingEstimate | 
   const { confidence, missing } = confidenceFor(body);
 
   return {
-    shirtSize: shiftSize(bandToLetter(measurements.chest, SHIRT_BANDS[table]), fitShift),
-    pantsSize: shiftSize(bandToLetter(measurements.waist, PANTS_BANDS[table]), fitShift),
+    shirtSize: shiftSize(
+      bandToLetter(measurements.chest, bandsFor(gender, SHIRT_BANDS)),
+      fitShift
+    ),
+    pantsSize: shiftSize(
+      bandToLetter(measurements.waist, bandsFor(gender, PANTS_BANDS)),
+      fitShift
+    ),
     waistLabel: `W${waistInches}`,
     measurements,
     confidence,

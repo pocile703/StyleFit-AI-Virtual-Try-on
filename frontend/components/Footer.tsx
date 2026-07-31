@@ -12,14 +12,16 @@ export default function Footer() {
             look before you buy it.
           </p>
         </div>
-        <nav className="flex flex-wrap gap-x-6 text-sm text-stone" aria-label="Footer">
-          <Link href="/try-on" className="inline-flex items-center min-h-11 hover:text-ink transition-colors">
+        {/* `min-h-11` alone left these 38–41px wide — short words don't reach a
+            44px target on their own, so the width has a floor too. */}
+        <nav className="flex flex-wrap gap-x-4 text-sm text-stone" aria-label="Footer">
+          <Link href="/try-on" className="inline-flex items-center justify-center min-h-11 min-w-11 px-2 hover:text-ink transition-colors">
             Try On
           </Link>
-          <Link href="/outfits" className="inline-flex items-center min-h-11 hover:text-ink transition-colors">
+          <Link href="/outfits" className="inline-flex items-center justify-center min-h-11 min-w-11 px-2 hover:text-ink transition-colors">
             Outfits
           </Link>
-          <Link href="/about" className="inline-flex items-center min-h-11 hover:text-ink transition-colors">
+          <Link href="/about" className="inline-flex items-center justify-center min-h-11 min-w-11 px-2 hover:text-ink transition-colors">
             About
           </Link>
         </nav>

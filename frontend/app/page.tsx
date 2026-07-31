@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   motion,
@@ -16,6 +16,7 @@ import TiltCard from "@/components/TiltCard";
 import MagneticButton from "@/components/MagneticButton";
 import Footer from "@/components/Footer";
 import { LOOKS, type Look } from "@/lib/looks";
+import { fetchServiceInfo } from "@/lib/api";
 import { useCalmMotion } from "@/lib/useHydrated";
 
 const HEADLINE: { word: string; accent?: boolean }[] = [
@@ -67,7 +68,7 @@ const STEPS = [
   {
     n: "02",
     title: "Choose a garment",
-    body: "Browse eight categories or drop in a product shot from any store.",
+    body: "Browse the catalog, or drop in a product shot from any store you're already browsing.",
   },
   {
     n: "03",
@@ -111,7 +112,7 @@ function ShowcaseCard({
   return (
     <motion.div
       style={{ x, y: yy, rotate, rotateY: ry, zIndex: 10 - Math.abs(offset) }}
-      className="absolute inset-0 mx-auto w-52 h-64 overflow-hidden rounded-3xl border border-mist bg-card shadow-[0_30px_70px_-30px_rgba(11,11,12,0.5)]"
+      className="absolute inset-0 mx-auto w-52 h-64 overflow-hidden rounded-3xl border border-mist bg-card shadow-[var(--shadow-figure)]"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -204,6 +205,20 @@ function Showcase3D() {
 export default function Home() {
   const reduce = useCalmMotion();
   const heroRef = useRef<HTMLElement>(null);
+  // The closing CTA used to promise "Free to sign up" while the deployed API
+  // gated registration behind an invite code — a visitor who believed the hero
+  // hit a wall with no door at the highest-intent moment on the page. Ask the
+  // API what's actually true rather than asserting either.
+  const [inviteOnly, setInviteOnly] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetchServiceInfo().then((info) => {
+      if (live) setInviteOnly(info.signupRequiresInvite);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
@@ -339,7 +354,7 @@ export default function Home() {
               className="inline-flex items-center min-h-11 text-sm font-medium hover:opacity-70 transition-opacity"
             >
               <span className="border-b-2 border-accent pb-0.5">
-                Browse all eight categories
+                Browse the full catalog
               </span>
             </Link>
           </div>
@@ -377,30 +392,24 @@ export default function Home() {
       {/* ── CTA band ─────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-5 pb-24">
         <Reveal>
+          {/* Two decorative layers used to sit here — a radial `accent-glow`
+              wash and a sweeping `accent/25` shimmer. Both were written for the
+              old cobalt accent; now that the accent aliases ink they render ink
+              on ink in light mode and a near-white haze on a near-white band in
+              dark. They were invisible in both themes, and would be banned
+              decorative gradients if they weren't. */}
           <div className="relative overflow-hidden rounded-3xl bg-ink text-paper px-8 py-16 md:px-14 md:py-20 text-center">
-            <div
-              className="absolute inset-0 opacity-60 pointer-events-none"
-              style={{
-                background:
-                  "radial-gradient(600px 240px at 50% 120%, var(--color-accent-glow), transparent 70%)",
-              }}
-            />
-            {!reduce && (
-              <motion.span
-                aria-hidden="true"
-                className="absolute inset-y-0 -left-1/3 w-1/3 skew-x-[-18deg] bg-gradient-to-r from-transparent via-accent/25 to-transparent pointer-events-none"
-                initial={{ x: "-40%", opacity: 0 }}
-                whileInView={{ x: "460%", opacity: [0, 1, 0] }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 1.4, ease: [0.32, 0.72, 0, 1], delay: 0.15 }}
-              />
-            )}
             <h2 className="relative font-display font-semibold text-3xl md:text-5xl tracking-tight">
               Your next look is one upload away.
             </h2>
             <p className="relative mt-3 text-paper/70 max-w-md mx-auto">
-              Free to sign up. Your photo stays on your own account — never
-              shown publicly or to other users.
+              {inviteOnly
+                ? "Accounts are invite-only while this runs on a paid AI service. "
+                : inviteOnly === false
+                  ? "Free to sign up. "
+                  : ""}
+              Your photo stays on your own account — never shown publicly or to
+              other users.
             </p>
             <div className="relative mt-8 flex justify-center">
               <MagneticButton

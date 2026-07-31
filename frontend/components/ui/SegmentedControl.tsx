@@ -18,6 +18,8 @@ interface SegmentedControlProps<T extends string> {
   label: string;
   idPrefix?: string;
   className?: string;
+  /** id of the copy explaining the selected option, announced with the group. */
+  describedBy?: string;
 }
 
 /**
@@ -34,6 +36,7 @@ export default function SegmentedControl<T extends string>({
   label,
   idPrefix,
   className = "",
+  describedBy,
 }: SegmentedControlProps<T>) {
   const isTabs = variant === "tabs";
 
@@ -47,6 +50,7 @@ export default function SegmentedControl<T extends string>({
     <div
       role={isTabs ? "tablist" : "radiogroup"}
       aria-label={label}
+      aria-describedby={describedBy}
       className={`flex gap-1 p-1 rounded-full bg-veil ${className}`}
       onKeyDown={(e) => {
         if (e.key === "ArrowRight" || e.key === "ArrowDown") {

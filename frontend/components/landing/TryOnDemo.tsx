@@ -65,7 +65,7 @@ export default function TryOnDemo() {
           sweepMs={SWEEP_MS}
           onSweepEnd={advance}
           onInteract={stop}
-          className="rounded-3xl border border-mist shadow-[0_24px_60px_-24px_rgba(11,11,12,0.3)]"
+          className="rounded-3xl border border-mist shadow-[var(--shadow-figure-soft)]"
         />
 
         {/* corner brackets — frame it as a captured photo */}

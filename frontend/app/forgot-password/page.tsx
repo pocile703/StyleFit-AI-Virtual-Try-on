@@ -3,6 +3,9 @@ import Link from "next/link";
 
 export const metadata: Metadata = { title: "Password reset — StyleFit AI" };
 
+const RESET_MAILTO =
+  "mailto:pocile703@gmail.com?subject=StyleFit%20AI%20%E2%80%94%20password%20reset";
+
 export default function ForgotPasswordPage() {
   return (
     <main id="main-content" tabIndex={-1} className="flex-1 grid place-items-center px-5 py-16">
@@ -25,24 +28,28 @@ export default function ForgotPasswordPage() {
         <h1 className="mt-5 font-display font-semibold text-3xl tracking-tight">
           Password reset
         </h1>
+        {/* This page used to tell locked-out visitors to "create a new account
+            to keep exploring" — which, on a deployment where sign-up needs an
+            invite code, is the one thing they cannot do. Point at a person
+            instead of at a door that may be shut. */}
         <p className="mt-3 text-stone text-sm leading-relaxed">
           Self-serve password reset isn&apos;t available in this project build
-          yet. For now, sign in with the password you set — or create a new
-          account to keep exploring.
+          yet. Sign in with the password you set — or, if you can&apos;t get
+          back in, ask and it&apos;ll be reset for you by hand.
         </p>
-        <div className="mt-7 flex justify-center gap-3">
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
           <Link
             href="/login"
             className="px-6 py-3 rounded-full bg-noir text-paper font-medium hover:bg-noir-deep transition-colors"
           >
             Back to log in
           </Link>
-          <Link
-            href="/signup"
+          <a
+            href={RESET_MAILTO}
             className="px-6 py-3 rounded-full border border-mist font-medium hover:border-ink transition-colors"
           >
-            Create account
-          </Link>
+            Ask for a reset
+          </a>
         </div>
       </div>
     </main>

@@ -44,6 +44,10 @@ function RevealToggle({
   );
 }
 
+/** The one route to an invite code, shared by sign-up and the reset stub. */
+export const REQUEST_ACCESS_MAILTO =
+  "mailto:pocile703@gmail.com?subject=StyleFit%20AI%20%E2%80%94%20invite%20code%20request";
+
 function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -195,7 +199,16 @@ function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
               />
               <span className="mt-1.5 block text-xs text-stone">
                 Every try-on runs on a paid AI service, so accounts are handed out by
-                code while this is a student project.
+                code while this is a student project.{" "}
+                {/* Without this there is no door: the gate is announced but
+                    nothing anywhere tells a visitor how to get through it. */}
+                <a
+                  href={REQUEST_ACCESS_MAILTO}
+                  className="inline-flex items-center min-h-11 font-medium text-ink underline underline-offset-2"
+                >
+                  Ask for a code
+                </a>{" "}
+                and you&apos;ll get one back by email.
               </span>
             </label>
           )}
@@ -227,14 +240,14 @@ function AuthFormInner({ mode }: { mode: "login" | "signup" }) {
           {isLogin ? (
             <>
               New to StyleFit?{" "}
-              <Link href={`/signup?next=${encodeURIComponent(next)}`} className="inline-flex items-center min-h-11 font-medium text-noir hover:text-noir-deep">
+              <Link href={`/signup?next=${encodeURIComponent(next)}`} className="inline-flex items-center justify-center min-h-11 min-w-11 px-1 font-medium text-noir hover:text-noir-deep">
                 Create an account
               </Link>
             </>
           ) : (
             <>
               Already have an account?{" "}
-              <Link href={`/login?next=${encodeURIComponent(next)}`} className="inline-flex items-center min-h-11 font-medium text-noir hover:text-noir-deep">
+              <Link href={`/login?next=${encodeURIComponent(next)}`} className="inline-flex items-center justify-center min-h-11 min-w-11 px-1 font-medium text-noir hover:text-noir-deep">
                 Log in
               </Link>
             </>

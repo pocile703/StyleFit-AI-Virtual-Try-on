@@ -8,6 +8,8 @@ import {
   errorMessage,
   errorKind,
   errorCode,
+  errorRetryAfter,
+  formatWait,
   runTryOn,
   downloadImage,
   outfitFilename,
@@ -16,7 +18,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import RevealSlider from "./RevealSlider";
 import FormError from "@/components/FormError";
-import type { TryOnSettings } from "@/lib/tryon";
+import { creditCost, type TryOnSettings } from "@/lib/tryon";
 
 const PHASES = [
   "Reading your photo…",
@@ -69,13 +71,23 @@ function describeFailure(err: unknown): Failure {
         retryable: false,
         fix: null,
       };
-    case "rate_limit":
+    case "rate_limit": {
+      // Two different limiters land here: a per-user hourly window and a
+      // whole-deployment daily cap that doesn't clear until UTC midnight. The
+      // server sends the real wait for each, so use it rather than assuming the
+      // short one — telling someone to wait a minute for a cap that lasts until
+      // tomorrow just loops them into the same failure.
+      const wait = errorRetryAfter(err);
+      const soon = wait === null || wait <= 15 * 60;
       return {
-        title: "Too many try-ons at once",
-        detail: "Give it a minute, then try again — nothing was charged.",
-        retryable: true,
+        title: soon ? "Too many try-ons at once" : "You've used up today's try-ons",
+        detail:
+          `${errorMessage(err)}${wait ? ` Try again in about ${formatWait(wait)}.` : ""}` +
+          " Nothing was charged.",
+        retryable: soon,
         fix: null,
       };
+    }
     case "timeout":
       return {
         title: "That took too long",
@@ -125,6 +137,13 @@ function describeFailure(err: unknown): Failure {
   }
 }
 
+/** A finished generation, so leaving and returning doesn't re-run (and re-bill) it. */
+export interface GeneratedResult {
+  resultUrl: string;
+  engine: string | null;
+  credits: number | null;
+}
+
 interface ResultStageProps {
   personUrl: string;
   personPreview: string;
@@ -133,6 +152,12 @@ interface ResultStageProps {
   settings: TryOnSettings;
   onTryOther: () => void;
   onChangePhoto?: () => void;
+  /** A previous run for these exact inputs — shown as-is instead of regenerating. */
+  initialResult?: GeneratedResult | null;
+  /** Hands a finished run up to the wizard so it survives step navigation. */
+  onResult?: (result: GeneratedResult) => void;
+  /** Whether the paid engine is on, so a re-run only quotes real credit costs. */
+  engineLive?: boolean;
 }
 
 export default function ResultStage({
@@ -143,10 +168,15 @@ export default function ResultStage({
   settings,
   onTryOther,
   onChangePhoto,
+  initialResult = null,
+  onResult,
+  engineLive = false,
 }: ResultStageProps) {
   const reduce = useReducedMotion();
   const { user } = useAuth();
-  const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [resultUrl, setResultUrl] = useState<string | null>(
+    initialResult?.resultUrl ?? null
+  );
   const [error, setError] = useState<Failure | null>(null);
   const [phase, setPhase] = useState(0);
   const [longWait, setLongWait] = useState(false);
@@ -154,10 +184,15 @@ export default function ResultStage({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
-  const [engine, setEngine] = useState<string | null>(null);
-  const [credits, setCredits] = useState<number | null>(null);
-  const started = useRef(false);
+  const [engine, setEngine] = useState<string | null>(initialResult?.engine ?? null);
+  const [credits, setCredits] = useState<number | null>(initialResult?.credits ?? null);
+  const [confirmRerun, setConfirmRerun] = useState(false);
+  // A result handed down from the wizard has already been paid for — don't let
+  // the mount effect below spend another credit reproducing it.
+  const started = useRef(Boolean(initialResult));
   const controller = useRef<AbortController | null>(null);
+
+  const cost = creditCost(settings);
 
   const generate = useCallback(async () => {
     setError(null);
@@ -176,13 +211,18 @@ export default function ResultStage({
       setEngine(result.engine ?? null);
       setCredits(result.credits ?? null);
       setResultUrl(result.resultUrl);
+      onResult?.({
+        resultUrl: result.resultUrl,
+        engine: result.engine ?? null,
+        credits: result.credits ?? null,
+      });
     } catch (err) {
       // A user-initiated cancel aborts the request and navigates away — don't
       // flash the failure screen on the way out.
       if (ac.signal.aborted) return;
       setError(describeFailure(err));
     }
-  }, [personUrl, garmentUrl, settings]);
+  }, [personUrl, garmentUrl, settings, onResult]);
 
   /** Abort an in-flight generation and step back to garment selection. */
   const cancel = useCallback(() => {
@@ -194,6 +234,7 @@ export default function ResultStage({
   const regenerate = useCallback(() => {
     setSavedId(null);
     setSaveError(null);
+    setConfirmRerun(false);
     generate();
   }, [generate]);
 
@@ -257,9 +298,28 @@ export default function ResultStage({
     }
   }, [resultUrl, outfitName, personUrl, garmentUrl]);
 
+  /* One status region for the whole stage, rendered above every branch so it
+     survives the swap from generating to result. It used to live inside the
+     generating branch and unmounted the instant the image arrived, which meant
+     a screen-reader user waited out a 10–60s generation and was never told it
+     had finished. Errors are left to the branch's own role="alert". */
+  const liveStatus = (
+    <span className="sr-only" role="status" aria-live="polite">
+      {error
+        ? ""
+        : resultUrl
+          ? "Your try-on is ready."
+          : longWait
+            ? "Still working. A good try-on takes a few seconds."
+            : "Generating your try-on."}
+    </span>
+  );
+
   /* ── generating ── */
   if (!resultUrl && !error) {
     return (
+      <>
+        {liveStatus}
       <div className="max-w-sm mx-auto text-center">
         <div className="relative aspect-[3/4] rounded-2xl overflow-hidden border border-mist">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -279,13 +339,8 @@ export default function ResultStage({
             <path d="M0 8 V0 H6 M94 0 H100 V8 M100 125 V133 H94 M6 133 H0 V125" stroke="currentColor" strokeWidth="1.5" fill="none" vectorEffect="non-scaling-stroke" />
           </svg>
         </div>
-        {/* One stable status for assistive tech — the rotating copy below is
-            decorative and would otherwise re-announce every 850ms. */}
-        <span className="sr-only" role="status" aria-live="polite">
-          {longWait
-            ? "Still working. A good try-on takes a few seconds."
-            : "Generating your try-on."}
-        </span>
+        {/* The rotating copy below is decorative — the stable announcement for
+            assistive tech is the stage-level status region above. */}
         <div className="mt-5 h-6" aria-hidden="true">
           <AnimatePresence mode="wait">
             <motion.p
@@ -330,12 +385,15 @@ export default function ResultStage({
           Cancel
         </button>
       </div>
+      </>
     );
   }
 
   /* ── error ── */
   if (error) {
     return (
+      <>
+        {liveStatus}
       <div className="max-w-sm mx-auto text-center py-10" role="alert">
         <span className="mx-auto grid place-items-center w-14 h-14 rounded-full bg-veil text-noir">
           <svg
@@ -398,11 +456,14 @@ export default function ResultStage({
           )}
         </div>
       </div>
+      </>
     );
   }
 
   /* ── result ── */
   return (
+    <>
+      {liveStatus}
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -483,20 +544,48 @@ export default function ResultStage({
             Try another garment
           </button>
 
-          {/* tertiary utilities — manage this look */}
-          <div className="flex items-center gap-5 text-sm">
+          {/* Download is free and Regenerate spends credits, so they can't look
+              alike. Download stays a plain text link; the re-run sits apart and
+              asks first, with the price on the confirming button. */}
+          <div className="flex items-center text-sm">
             <button
               onClick={download}
-              className="font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors"
+              className="inline-flex items-center min-h-11 font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors"
             >
               Download
             </button>
-            <button
-              onClick={regenerate}
-              className="font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors"
-            >
-              Regenerate
-            </button>
+          </div>
+
+          <div className="border-t border-mist pt-3">
+            {confirmRerun ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={regenerate}
+                  className="px-4 py-2 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors"
+                >
+                  Generate again
+                  {engineLive && ` · ${cost} credit${cost === 1 ? "" : "s"}`}
+                </button>
+                <button
+                  onClick={() => setConfirmRerun(false)}
+                  className="inline-flex items-center min-h-11 text-sm font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors"
+                >
+                  Keep this one
+                </button>
+                <p className="w-full text-xs text-stone leading-relaxed">
+                  This replaces the result above with a fresh one. Save it first
+                  if you want to keep both.
+                </p>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmRerun(true)}
+                className="inline-flex items-center min-h-11 text-sm font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors"
+              >
+                Not quite right? Run it again
+                {engineLive && ` (${cost} credit${cost === 1 ? "" : "s"})`}
+              </button>
+            )}
           </div>
         </div>
 
@@ -508,5 +597,6 @@ export default function ResultStage({
         </p>
       </div>
     </motion.div>
+    </>
   );
 }

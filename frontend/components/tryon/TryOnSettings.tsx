@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import {
@@ -39,6 +40,10 @@ function Field<T extends string>({
   layoutId: string;
 }) {
   const selected = options.find((o) => o.value === value);
+  // The description explains what the current choice does, so it has to be
+  // wired to the group — otherwise a screen reader announces the options and
+  // drops the only copy that says what they mean.
+  const descriptionId = `${layoutId}-description`;
   return (
     <div>
       <p className="mb-2 text-sm font-medium">{label}</p>
@@ -48,8 +53,11 @@ function Field<T extends string>({
         onChange={onChange}
         layoutId={layoutId}
         label={label}
+        describedBy={descriptionId}
       />
-      <p className="mt-2 text-xs text-stone">{selected?.description}</p>
+      <p id={descriptionId} className="mt-2 text-xs text-stone">
+        {selected?.description}
+      </p>
     </div>
   );
 }
@@ -61,10 +69,16 @@ export default function TryOnSettings({
 }: TryOnSettingsProps) {
   const reduce = useReducedMotion();
   const isHigh = value.quality === "high";
+  // `applySettingChange` has always reported when a choice forced the tier up;
+  // nothing read it, so the quality switch moved under the user with no
+  // explanation — and, on the live engine, tripled what the run costs.
+  const [autoUpgraded, setAutoUpgraded] = useState(false);
 
   function update(patch: Partial<Settings>) {
     const { settings, upgraded } = applySettingChange(value, patch);
     onChange(settings);
+    if (upgraded) setAutoUpgraded(true);
+    else if (patch.quality) setAutoUpgraded(false);
     return upgraded;
   }
 
@@ -263,7 +277,13 @@ export default function TryOnSettings({
               animate={{ opacity: 1, y: 0 }}
               exit={reduce ? undefined : { opacity: 0 }}
               className="text-xs text-stone"
+              role={autoUpgraded ? "status" : undefined}
             >
+              {autoUpgraded && (
+                <span className="font-medium text-ink">
+                  Switched to High quality — that option only exists there.{" "}
+                </span>
+              )}
               High quality renders at a larger size and takes around three times
               as long{engineLive ? ", at 3 credits instead of 1" : ""}.
             </motion.p>

@@ -86,7 +86,7 @@ export default function Nav() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`relative px-3.5 py-2 text-sm font-medium rounded-full transition-colors ${
+                className={`relative inline-flex items-center min-h-11 px-3.5 text-sm font-medium rounded-full transition-colors ${
                   active ? "text-ink" : "text-stone hover:text-ink"
                 }`}
               >
@@ -109,14 +109,14 @@ export default function Nav() {
             <>
               <Link
                 href="/profile"
-                className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full hover:bg-veil transition-colors"
+                className="flex items-center gap-2 min-h-11 pl-1.5 pr-3 rounded-full hover:bg-veil transition-colors"
               >
                 <Avatar user={user} size="sm" />
                 <span className="text-sm font-medium">{user.name.split(" ")[0]}</span>
               </Link>
               <button
                 onClick={logout}
-                className="px-3.5 py-2 text-sm font-medium text-stone hover:text-ink transition-colors"
+                className="inline-flex items-center min-h-11 px-3.5 text-sm font-medium text-stone hover:text-ink transition-colors"
               >
                 Log out
               </button>
@@ -125,13 +125,13 @@ export default function Nav() {
             <>
               <Link
                 href="/login"
-                className="px-4 py-2 text-sm font-medium rounded-full border border-mist hover:border-stone transition-colors"
+                className="inline-flex items-center min-h-11 px-4 text-sm font-medium rounded-full border border-mist hover:border-stone transition-colors"
               >
                 Log in
               </Link>
               <Link
                 href="/signup"
-                className="px-4 py-2 text-sm font-medium rounded-full bg-noir text-paper hover:bg-noir-deep transition-colors"
+                className="inline-flex items-center min-h-11 px-4 text-sm font-medium rounded-full bg-noir text-paper hover:bg-noir-deep transition-colors"
               >
                 Sign up
               </Link>
@@ -194,7 +194,7 @@ export default function Nav() {
                     onClick={() => setOpen(false)}
                     className="px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-veil"
                   >
-                    Profile — {user.name}
+                    <span className="block truncate">Profile — {user.name}</span>
                   </Link>
                   <button
                     onClick={() => {
