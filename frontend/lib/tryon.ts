@@ -113,9 +113,29 @@ export function applySettingChange(
   return { settings: next, upgraded };
 }
 
-/** Credits FASHN bills for one image. Mirrors creditCost() on the server. */
-export function creditCost(s: TryOnSettings): number {
-  return s.quality === "high" ? 3 : 1;
+/** The server's own price table, as reported by `GET /api/tryon/engine`. */
+export interface CreditRates {
+  standard: number;
+  high: number;
+}
+
+/** Fallback only. The live rates come from the server — see `creditCost`. */
+export const DEFAULT_CREDIT_RATES: CreditRates = { standard: 1, high: 3 };
+
+/**
+ * Credits FASHN bills for one image.
+ *
+ * `rates` comes from the engine endpoint, which has always returned them and
+ * which the client used to fetch and throw away while hardcoding 1 and 3 here.
+ * That meant a price change on the server would have left the UI quoting a
+ * number that was simply false. Pass the fetched rates; the default is a
+ * last-resort guess for the brief window before they arrive.
+ */
+export function creditCost(
+  s: TryOnSettings,
+  rates: CreditRates = DEFAULT_CREDIT_RATES
+): number {
+  return s.quality === "high" ? rates.high : rates.standard;
 }
 
 const LABELS: Record<string, string> = {

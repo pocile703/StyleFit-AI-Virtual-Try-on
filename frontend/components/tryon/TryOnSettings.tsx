@@ -16,6 +16,8 @@ import {
   applySettingChange,
   creditCost,
   summarizeSettings,
+  type CreditRates,
+  DEFAULT_CREDIT_RATES,
 } from "@/lib/tryon";
 
 interface TryOnSettingsProps {
@@ -23,6 +25,8 @@ interface TryOnSettingsProps {
   onChange: (next: Settings) => void;
   /** Credit costs are only quoted when the paid engine is actually on. */
   engineLive: boolean;
+  /** The server's price table, so the client never asserts a rate it invented. */
+  rates?: CreditRates;
 }
 
 /** A labelled choice with the description of whichever option is selected. */
@@ -66,6 +70,7 @@ export default function TryOnSettings({
   value,
   onChange,
   engineLive,
+  rates = DEFAULT_CREDIT_RATES,
 }: TryOnSettingsProps) {
   const reduce = useReducedMotion();
   const isHigh = value.quality === "high";
@@ -82,7 +87,7 @@ export default function TryOnSettings({
     return upgraded;
   }
 
-  const cost = creditCost(value);
+  const cost = creditCost(value, rates);
   const isDefault =
     JSON.stringify(value) === JSON.stringify(DEFAULT_SETTINGS);
 
@@ -109,13 +114,24 @@ export default function TryOnSettings({
       </summary>
 
       <div className="border-t border-mist px-5 py-5 flex flex-col gap-6">
+        {/* The number appears on the summary row above and on the Generate
+            button, and a price with no balance beside it reads as a bill. Say
+            once, where it first shows up, whose meter is running. */}
+        {engineLive && (
+          <p className="text-xs text-stone leading-relaxed">
+            Credits are what the AI service charges this project for a
+            generation — they come out of its allowance, not your pocket.
+            They&apos;re shown so the cost of a setting is never hidden from you.
+          </p>
+        )}
+
         {!isDefault && (
           <p className="text-xs text-stone">
             Defaults work for most photos —{" "}
             <button
               type="button"
               onClick={() => onChange({ ...DEFAULT_SETTINGS })}
-              className="font-medium text-ink underline underline-offset-2"
+              className="inline-flex items-center min-h-11 font-medium text-ink underline underline-offset-2"
             >
               reset them
             </button>
@@ -163,7 +179,7 @@ export default function TryOnSettings({
                 <button
                   type="button"
                   onClick={() => update({ quality: "high" })}
-                  className="font-medium text-ink underline underline-offset-2"
+                  className="inline-flex items-center min-h-11 font-medium text-ink underline underline-offset-2"
                 >
                   High quality
                 </button>

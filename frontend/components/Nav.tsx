@@ -10,6 +10,7 @@ import {
   useMotionValueEvent,
 } from "motion/react";
 import Logo from "./Logo";
+import Button from "./ui/Button";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import Avatar from "./Avatar";
@@ -168,60 +169,74 @@ export default function Nav() {
             className="md:hidden overflow-hidden border-t border-mist"
             aria-label="Mobile"
           >
+            {/* Every item routes through Button, so the 44px floor holds here
+                too. It didn't before: the menu is collapsed by default, so no
+                route sweep ever measured it and it sat at 36-40px. */}
             <div className="px-5 py-3 flex flex-col gap-1">
               {LINKS.map((link) => (
-                <Link
+                <Button
                   key={link.href}
                   href={link.href}
                   onClick={() => setOpen(false)}
-                  className="px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-veil"
+                  variant="ghost"
+                  size="compact"
+                  className="justify-start rounded-lg text-ink"
                 >
                   {link.label}
-                </Link>
+                </Button>
               ))}
               <div className="h-px bg-mist my-2" />
               {user ? (
                 <>
-                  <Link
+                  <Button
                     href="/outfits"
                     onClick={() => setOpen(false)}
-                    className="px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-veil"
+                    variant="ghost"
+                    size="compact"
+                    className="justify-start rounded-lg text-ink"
                   >
                     My Outfits
-                  </Link>
-                  <Link
+                  </Button>
+                  <Button
                     href="/profile"
                     onClick={() => setOpen(false)}
-                    className="px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-veil"
+                    variant="ghost"
+                    size="compact"
+                    className="justify-start rounded-lg text-ink min-w-0"
                   >
                     <span className="block truncate">Profile — {user.name}</span>
-                  </Link>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => {
                       logout();
                       setOpen(false);
                     }}
-                    className="px-3 py-2.5 rounded-lg text-sm font-medium text-left text-stone hover:bg-veil"
+                    variant="ghost"
+                    size="compact"
+                    className="justify-start rounded-lg"
                   >
                     Log out
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <div className="flex gap-2 px-3 py-2">
-                  <Link
+                  <Button
                     href="/login"
                     onClick={() => setOpen(false)}
-                    className="flex-1 text-center px-4 py-2 text-sm font-medium rounded-full border border-mist"
+                    variant="secondary"
+                    size="compact"
+                    className="flex-1"
                   >
                     Log in
-                  </Link>
-                  <Link
+                  </Button>
+                  <Button
                     href="/signup"
                     onClick={() => setOpen(false)}
-                    className="flex-1 text-center px-4 py-2 text-sm font-medium rounded-full bg-noir text-paper"
+                    size="compact"
+                    className="flex-1"
                   >
                     Sign up
-                  </Link>
+                  </Button>
                 </div>
               )}
             </div>

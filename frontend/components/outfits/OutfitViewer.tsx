@@ -73,7 +73,7 @@ export default function OutfitViewer({
             type="button"
             onClick={() => setComparing((c) => !c)}
             aria-pressed={comparing}
-            className="px-5 py-2.5 rounded-full border border-mist text-sm font-medium hover:border-ink transition-colors"
+            className="inline-flex items-center justify-center min-h-11 px-5 rounded-full border border-mist text-sm font-medium hover:border-ink transition-colors"
           >
             {comparing ? "Show result only" : "Compare with original"}
           </button>
@@ -81,7 +81,7 @@ export default function OutfitViewer({
         <button
           type="button"
           onClick={onDownload}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors"
+          className="inline-flex items-center justify-center gap-2 min-h-11 px-5 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors"
         >
           <DownloadIcon />
           Download

@@ -18,7 +18,12 @@ import {
 import { useAuth } from "@/lib/auth";
 import RevealSlider from "./RevealSlider";
 import FormError from "@/components/FormError";
-import { creditCost, type TryOnSettings } from "@/lib/tryon";
+import {
+  creditCost,
+  DEFAULT_CREDIT_RATES,
+  type CreditRates,
+  type TryOnSettings,
+} from "@/lib/tryon";
 
 const PHASES = [
   "Reading your photo…",
@@ -158,6 +163,8 @@ interface ResultStageProps {
   onResult?: (result: GeneratedResult) => void;
   /** Whether the paid engine is on, so a re-run only quotes real credit costs. */
   engineLive?: boolean;
+  /** The server's price table, so the client never asserts a rate it invented. */
+  rates?: CreditRates;
 }
 
 export default function ResultStage({
@@ -171,6 +178,7 @@ export default function ResultStage({
   initialResult = null,
   onResult,
   engineLive = false,
+  rates = DEFAULT_CREDIT_RATES,
 }: ResultStageProps) {
   const reduce = useReducedMotion();
   const { user } = useAuth();
@@ -192,7 +200,7 @@ export default function ResultStage({
   const started = useRef(Boolean(initialResult));
   const controller = useRef<AbortController | null>(null);
 
-  const cost = creditCost(settings);
+  const cost = creditCost(settings, rates);
 
   const generate = useCallback(async () => {
     setError(null);
@@ -380,7 +388,7 @@ export default function ResultStage({
         </div>
         <button
           onClick={cancel}
-          className="mt-5 text-sm font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors"
+          className="mt-5 inline-flex items-center min-h-11 text-sm font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors"
         >
           Cancel
         </button>
@@ -428,28 +436,28 @@ export default function ResultStage({
           {error.fix === "photo" && onChangePhoto ? (
             <button
               onClick={onChangePhoto}
-              className="px-5 py-2.5 rounded-full bg-noir text-paper font-medium hover:bg-noir-deep transition-colors"
+              className="min-h-11 px-5 rounded-full bg-noir text-paper font-medium hover:bg-noir-deep transition-colors inline-flex items-center justify-center"
             >
               Use a different photo
             </button>
           ) : error.retryable ? (
             <button
               onClick={retry}
-              className="px-5 py-2.5 rounded-full bg-noir text-paper font-medium hover:bg-noir-deep transition-colors"
+              className="min-h-11 px-5 rounded-full bg-noir text-paper font-medium hover:bg-noir-deep transition-colors inline-flex items-center justify-center"
             >
               Try again
             </button>
           ) : null}
           <button
             onClick={onTryOther}
-            className="px-5 py-2.5 rounded-full border border-mist font-medium hover:border-ink transition-colors"
+            className="min-h-11 px-5 rounded-full border border-mist font-medium hover:border-ink transition-colors inline-flex items-center justify-center"
           >
             Pick another garment
           </button>
           {!error.retryable && error.fix !== "photo" && (
             <button
               onClick={retry}
-              className="px-5 py-2.5 text-sm font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors"
+              className="min-h-11 px-5 text-sm font-medium text-stone underline underline-offset-4 hover:text-ink transition-colors inline-flex items-center justify-center"
             >
               Try again anyway
             </button>
@@ -508,12 +516,12 @@ export default function ResultStage({
                   value={outfitName}
                   onChange={(e) => setOutfitName(e.target.value)}
                   aria-label="Outfit name"
-                  className="flex-1 min-w-0 px-4 py-2.5 rounded-full border border-mist bg-card/70 text-sm focus:border-noir"
+                  className="flex-1 min-w-0 min-h-11 px-4 rounded-full border border-mist bg-card/70 text-sm focus:border-noir"
                 />
                 <button
                   onClick={saveOutfit}
                   disabled={saving}
-                  className="px-5 py-2.5 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors disabled:opacity-60"
+                  className="min-h-11 px-5 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors disabled:opacity-60 inline-flex items-center justify-center shrink-0"
                 >
                   {saving ? "Saving…" : "Save outfit"}
                 </button>
@@ -539,7 +547,7 @@ export default function ResultStage({
           {/* one secondary action — the main "what next" */}
           <button
             onClick={onTryOther}
-            className="w-full px-5 py-2.5 rounded-full border border-mist text-sm font-medium hover:border-ink transition-colors"
+            className="w-full min-h-11 px-5 rounded-full border border-mist text-sm font-medium hover:border-ink transition-colors inline-flex items-center justify-center"
           >
             Try another garment
           </button>
@@ -561,7 +569,7 @@ export default function ResultStage({
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={regenerate}
-                  className="px-4 py-2 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors"
+                  className="min-h-11 px-4 rounded-full bg-noir text-paper text-sm font-medium hover:bg-noir-deep transition-colors inline-flex items-center justify-center"
                 >
                   Generate again
                   {engineLive && ` · ${cost} credit${cost === 1 ? "" : "s"}`}

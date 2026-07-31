@@ -218,7 +218,7 @@ Flat by default. Surfaces rest with no shadow; depth is a *response to state*, n
 - **Mobile:** Hamburger paired with the theme toggle in a shared flex wrapper; `Avatar` uses the shared component at `sm` size.
 
 ### Signature: The Reveal Slider
-A before/after comparison for the try-on result — a draggable handle (`w-10 h-10 rounded-full bg-white shadow-lg`) splits ORIGINAL and TRY-ON, with the labels as `bg-black/70 text-white` photo-overlay chips. This is the payoff component: it *shows* the garment on the user, the core of "see it on you."
+A before/after comparison for the try-on result — a draggable handle (`w-11 h-11 rounded-full bg-white shadow-lg`) splits ORIGINAL and TRY-ON, with the labels as `bg-black/70 text-white` photo-overlay chips. The `role="slider"` element is a **44px-wide transparent column** centred on the split, with the hairline divider as a child: the divider itself used to carry the role, which made the target 2px wide. This is the payoff component: it *shows* the garment on the user, the core of "see it on you."
 
 ## 6. Do's and Don'ts
 

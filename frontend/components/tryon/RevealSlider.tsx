@@ -144,7 +144,18 @@ export default function RevealSlider({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(pos)}
-        aria-valuetext={`${Math.round(pos)}% of the try-on result shown`}
+        /**
+         * `pos` is the handle's position, so the original occupies 0…pos and
+         * the result occupies pos…100 — `clipPath: inset(0 0 0 pos%)` clips the
+         * result from the left *by* pos%. This used to announce
+         * "`pos`% of the try-on result shown", which is exactly inverted: at
+         * pos=100 a screen-reader user heard "100% of the result shown" while
+         * none of it was visible, and ArrowRight announced an increase while
+         * revealing less. Say both sides so the direction can't be misread.
+         */
+        aria-valuetext={`${Math.round(pos)}% original, ${
+          100 - Math.round(pos)
+        }% try-on result`}
         tabIndex={0}
         onKeyDown={(e) => {
           if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
@@ -154,14 +165,22 @@ export default function RevealSlider({
           if (e.key === "Home") setPos(0);
           if (e.key === "End") setPos(100);
         }}
-        className="absolute inset-y-0 -ml-px w-0.5 bg-white shadow-[0_0_12px_rgba(11,11,12,0.35)]"
+        // The focusable element is a 44px-wide transparent column centred on the
+        // split, not the hairline itself — the divider used to *be* the slider,
+        // which made the keyboard and pointer target 2px wide on the component
+        // the whole product is built around. The visible line is a child.
+        className="absolute inset-y-0 -ml-[22px] w-11"
         style={{ left: `${pos}%`, transition: glide && `left ${glide}` }}
       >
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-0 left-1/2 -ml-px w-0.5 bg-white shadow-[0_0_12px_rgba(11,11,12,0.35)]"
+        />
         <motion.span
           initial={reduce ? false : { scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 400, damping: 22, delay: 0.15 }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 grid place-items-center w-10 h-10 rounded-full bg-white shadow-lg text-black"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 grid place-items-center w-11 h-11 rounded-full bg-white shadow-lg text-black"
         >
           <svg viewBox="0 0 24 24" className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M8 8l-4 4 4 4M16 8l4 4-4 4" />

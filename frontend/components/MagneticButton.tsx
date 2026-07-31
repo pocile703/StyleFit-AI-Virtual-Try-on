@@ -15,8 +15,15 @@ interface MagneticButtonProps {
   iconWrapClassName?: string;
   /** Max pixels the content pulls toward the cursor. */
   strength?: number;
-  /** Inverted ink fill wipes up from the bottom on hover (marketing accent). */
-  accent?: boolean;
+  /**
+   * Fill that wipes up from the bottom on hover. It has to be the *opposite*
+   * of the button's own fill or the hover is invisible: `bg-accent` aliases
+   * `--color-ink`, so `wipe="ink"` on a `bg-noir` button wiped near-black over
+   * near-black in light mode and near-white over near-white in dark, and the
+   * only feedback left was a 2px icon nudge. Dark-filled button → `"paper"`,
+   * light-filled button → `"ink"`.
+   */
+  wipe?: "ink" | "paper";
 }
 
 /**
@@ -31,7 +38,7 @@ export default function MagneticButton({
   icon,
   iconWrapClassName = "bg-paper/15",
   strength = 6,
-  accent = false,
+  wipe,
 }: MagneticButtonProps) {
   const reduce = useCalmMotion();
   const ref = useRef<HTMLAnchorElement>(null);
@@ -68,17 +75,39 @@ export default function MagneticButton({
         onPointerLeave={reset}
         className={`group/mag relative isolate inline-flex items-center gap-2 overflow-hidden ${className}`}
       >
-        {accent && (
+        {wipe && (
           <span
             aria-hidden="true"
-            className="absolute inset-0 -z-10 translate-y-full bg-accent transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover/mag:translate-y-0"
+            className={`absolute inset-0 -z-10 translate-y-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover/mag:translate-y-0 ${
+              wipe === "paper" ? "bg-paper" : "bg-accent"
+            }`}
           />
         )}
-        <span className={accent ? "transition-colors duration-300 group-hover/mag:text-paper" : ""}>
+        <span
+          className={
+            wipe
+              ? `transition-colors duration-300 ${
+                  wipe === "paper"
+                    ? "group-hover/mag:text-ink"
+                    : "group-hover/mag:text-paper"
+                }`
+              : ""
+          }
+        >
           {children}
         </span>
         {icon && (
-          <span className={`grid place-items-center w-8 h-8 rounded-full transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover/mag:translate-x-0.5 group-hover/mag:-translate-y-px group-hover/mag:scale-105 ${iconWrapClassName}`}>
+          // The icon disc is a translucent tint of the resting fill, so it has
+          // to re-tint against the wiped surface or it disappears mid-hover.
+          <span
+            className={`grid place-items-center w-8 h-8 rounded-full transition-[transform,background-color] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover/mag:translate-x-0.5 group-hover/mag:-translate-y-px group-hover/mag:scale-105 ${iconWrapClassName} ${
+              wipe === "paper"
+                ? "group-hover/mag:bg-ink/10"
+                : wipe === "ink"
+                  ? "group-hover/mag:bg-paper/15"
+                  : ""
+            }`}
+          >
             {icon}
           </span>
         )}

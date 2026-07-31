@@ -189,7 +189,7 @@ export default function AboutPage() {
                 </svg>
               }
               iconWrapClassName="bg-paper/15"
-              accent
+              wipe="paper"
               className="pl-7 pr-2.5 py-2.5 rounded-full bg-noir text-paper font-medium transition-colors"
             >
               Start a try-on

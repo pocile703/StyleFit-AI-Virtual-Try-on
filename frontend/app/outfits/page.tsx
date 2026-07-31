@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import AppShell from "@/components/AppShell";
 import FormError from "@/components/FormError";
+import Button from "@/components/ui/Button";
 import Lightbox from "@/components/ui/Lightbox";
 import OutfitCard from "@/components/outfits/OutfitCard";
 import OutfitViewer from "@/components/outfits/OutfitViewer";
@@ -209,12 +210,9 @@ function OutfitsContent() {
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[var(--z-toast)] flex items-center gap-4 pl-5 pr-2 py-2 rounded-full bg-noir text-paper shadow-[0_12px_30px_-10px_rgba(11,11,12,0.5)]"
           >
             <span className="text-sm font-medium">Look deleted</span>
-            <button
-              onClick={undoDelete}
-              className="px-4 py-1.5 rounded-full bg-paper/15 text-sm font-semibold hover:bg-paper/25 transition-colors"
-            >
+            <Button variant="inverse" size="compact" onClick={undoDelete}>
               Undo
-            </button>
+            </Button>
           </motion.div>
         )}
       </AnimatePresence>

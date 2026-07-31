@@ -80,7 +80,7 @@ export default function AppShell({
     <div className="flex-1 mx-auto w-full max-w-6xl px-5 py-8 md:py-12 flex flex-col md:flex-row gap-8 md:gap-12">
       <aside className="md:w-52 shrink-0">
         <div className="flex items-center gap-3 px-2">
-          <Avatar user={user} size="md" />
+          <Avatar user={user} size="md" className="shrink-0" />
           <div className="min-w-0">
             <p className="font-medium truncate">{user.name}</p>
             <p className="text-xs text-stone truncate">{user.email}</p>

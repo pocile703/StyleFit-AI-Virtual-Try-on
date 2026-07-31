@@ -12,9 +12,11 @@ import TryOnSettings from "@/components/tryon/TryOnSettings";
 import { fetchEngineInfo, imageUrl } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import {
+  DEFAULT_CREDIT_RATES,
   DEFAULT_SETTINGS,
   creditCost,
   hydrateSettings,
+  type CreditRates,
   type TryOnSettings as Settings,
 } from "@/lib/tryon";
 
@@ -45,6 +47,7 @@ function TryOnWizard() {
   const [garmentLabel, setGarmentLabel] = useState("Selected garment");
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [engineLive, setEngineLive] = useState(false);
+  const [rates, setRates] = useState<CreditRates>(DEFAULT_CREDIT_RATES);
   const [runId, setRunId] = useState(0);
   const [lastPerson, setLastPerson] = useState<string | null>(null);
   // The finished run, tagged with the inputs that produced it. Stepping back to
@@ -104,10 +107,20 @@ function TryOnWizard() {
   }, [personUrl, garmentUrl, garmentLabel, settings]);
 
   // Credit costs are only shown when the paid engine is actually configured —
-  // quoting a price against the offline mock would be a lie.
+  // quoting a price against the offline mock would be a lie. The rates come
+  // from the same response, so the number on the button is the server's, not a
+  // constant compiled into the client.
   useEffect(() => {
     fetchEngineInfo()
-      .then((info) => setEngineLive(info.live))
+      .then((info) => {
+        setEngineLive(info.live);
+        // The endpoint reports `{standard: 0, high: 0}` when the engine is off,
+        // so a truthiness check would adopt zeros and quote "0 credits" the
+        // moment a key was added. Only take rates that are actually priced.
+        if (info.credits?.standard > 0 && info.credits?.high > 0) {
+          setRates(info.credits);
+        }
+      })
       .catch(() => setEngineLive(false));
   }, []);
 
@@ -359,6 +372,7 @@ function TryOnWizard() {
                   value={settings}
                   onChange={setSettings}
                   engineLive={engineLive}
+                  rates={rates}
                 />
               </div>
 
@@ -391,8 +405,8 @@ function TryOnWizard() {
                         ? "Back to your result"
                         : `Generate preview${
                             engineLive
-                              ? ` · ${creditCost(settings)} credit${
-                                  creditCost(settings) === 1 ? "" : "s"
+                              ? ` · ${creditCost(settings, rates)} credit${
+                                  creditCost(settings, rates) === 1 ? "" : "s"
                                 }`
                               : ""
                           }`}
@@ -433,6 +447,7 @@ function TryOnWizard() {
                 initialResult={cachedResult}
                 onResult={keepResult}
                 engineLive={engineLive}
+                rates={rates}
               />
             </motion.section>
           )}

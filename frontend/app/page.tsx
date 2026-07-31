@@ -279,7 +279,7 @@ export default function Home() {
               href="/try-on"
               icon={ArrowGlyph}
               iconWrapClassName="bg-paper/15"
-              accent
+              wipe="paper"
               className="pl-6 pr-2 py-2 rounded-full bg-noir text-paper font-medium transition-colors"
             >
               Start try-on
@@ -416,7 +416,7 @@ export default function Home() {
                 href="/try-on"
                 icon={ArrowGlyph}
                 iconWrapClassName="bg-ink/10"
-                accent
+                wipe="ink"
                 className="pl-7 pr-2.5 py-2.5 rounded-full bg-paper text-ink font-medium transition-colors"
               >
                 Try it now
